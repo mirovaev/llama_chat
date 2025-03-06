@@ -11,9 +11,7 @@ URL = "https://api.together.xyz/v1/chat/completions"
 
 messages = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
 
-@app.route("/")
-def home():
-    return "Hello, Railway!"
+
 
 @app.route("/")
 def index():
