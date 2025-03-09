@@ -1,7 +1,7 @@
 import os
 import requests
 import redis
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -40,6 +40,11 @@ def register():
     r.hset("users", username, hashed_password)
     return jsonify({"message": "Пользователь зарегистрирован"})
 
+@app.before_request
+def check_auth():
+    if request.endpoint not in ["login", "static"]:  # Разрешаем доступ к /login и статическим файлам
+        if not session.get("user"):
+            return jsonify({"error": "Требуется авторизация"}), 401
 
 # Вход пользователя
 @app.route("/login", methods=["POST"])
@@ -74,11 +79,15 @@ def status():
     return jsonify({"message": "Вы не авторизованы"}), 401
 
 
-
 @app.route("/")
 def index():
+    if "user" not in session:  # Проверяем, есть ли пользователь в сессии
+        return redirect(url_for("login"))  # Если нет, отправляем на страницу логина
+
+    # Если пользователь залогинен, проверяем, есть ли история сообщений
     if "messages" not in session:
         session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
+
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
