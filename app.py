@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_session import Session
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # или задайте свой ключ
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
 
 # Настройки сессий с использованием Redis
 app.config["SESSION_TYPE"] = "redis"
@@ -22,21 +22,9 @@ URL = "https://api.together.xyz/v1/chat/completions"
 
 @app.route("/")
 def index():
-    session["messages"] = session.get("messages", [{"role": "system", "content": "Ты — полезный AI-ассистент."}])
+    if "messages" not in session:
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
     return render_template("index.html")
-
-
-
-# код для проверки корректной работы редиса
-@app.route("/check-redis")
-def check_redis():
-    try:
-        r = redis.Redis.from_url(os.getenv("REDIS_URL"))
-        r.set("test_key", "test_value")
-        return "Redis is working"
-    except Exception as e:
-        return f"Redis connection failed: {e}"
-
 
 @app.route("/chat", methods=["POST"])
 def chat():
