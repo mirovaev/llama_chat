@@ -20,16 +20,12 @@ Session(app)
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
 URL = "https://api.together.xyz/v1/chat/completions"
 
-# @app.route("/")
-# def index():
-#     session["messages"] = session.get("messages", [{"role": "system", "content": "Ты — полезный AI-ассистент."}])
-#     return render_template("index.html")
-
 @app.route("/")
 def index():
-    if "messages" not in session:
-        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
+    session["messages"] = session.get("messages", [{"role": "system", "content": "Ты — полезный AI-ассистент."}])
     return render_template("index.html")
+
+
 
 # код для проверки корректной работы редиса
 @app.route("/check-redis")
@@ -54,7 +50,11 @@ def chat():
     if not user_input:
         return jsonify({"error": "Пустой запрос"}), 400
 
-    # Используем сессию вместо глобальной переменной messages
+    # Инициализация сессии, если её нет
+    if "messages" not in session:
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
+
+    # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
 
     headers = {
