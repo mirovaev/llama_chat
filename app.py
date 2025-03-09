@@ -20,10 +20,27 @@ Session(app)
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
 URL = "https://api.together.xyz/v1/chat/completions"
 
+# @app.route("/")
+# def index():
+#     session["messages"] = session.get("messages", [{"role": "system", "content": "Ты — полезный AI-ассистент."}])
+#     return render_template("index.html")
+
 @app.route("/")
 def index():
-    session["messages"] = session.get("messages", [{"role": "system", "content": "Ты — полезный AI-ассистент."}])
+    if "messages" not in session:
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
     return render_template("index.html")
+
+# код для проверки корректной работы редиса
+@app.route("/check-redis")
+def check_redis():
+    try:
+        r = redis.Redis.from_url(os.getenv("REDIS_URL"))
+        r.set("test_key", "test_value")
+        return "Redis is working"
+    except Exception as e:
+        return f"Redis connection failed: {e}"
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
