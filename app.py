@@ -22,7 +22,17 @@ r = redis.Redis.from_url(os.getenv("REDIS_URL"))
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
 URL = "https://api.together.xyz/v1/chat/completions"
 
+@app.route("/login")
+def login_page():
+    if "user" in session:
+        return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
+    return render_template("login.html")  # Показываем страницу логина
 
+@app.route("/register")
+def register_page():
+    if "user" in session:
+        return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
+    return render_template("register.html")  # Показываем страницу регистрации
 # Регистрация пользователя
 @app.route("/register", methods=["POST"])
 def register():
