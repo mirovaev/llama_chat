@@ -51,6 +51,23 @@
 
             inputField.value = "";
         }
+        // Добавляем код для запроса состояния сессии
+        async function getStatus() {
+            const response = await fetch('/status', {
+                method: 'GET',
+                credentials: 'include'  // Включение cookies для передачи сессии
+            });
+
+            const data = await response.json();
+            if (response.status === 200) {
+                console.log(data.message);  // Вывод сообщения о статусе сессии в консоль
+            } else {
+                console.error(data.message);  // Вывод ошибки в консоль
+            }
+        }
+
+        // Вызываем getStatus при загрузке страницы
+        window.onload = getStatus;
     </script>
 
 </body>

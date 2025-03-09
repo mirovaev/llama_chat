@@ -15,6 +15,7 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # или 'Strict' в зависимости от требований безопасности
 
 Session(app)
 
@@ -62,7 +63,7 @@ def check_auth():
             return jsonify({"error": "Требуется авторизация"}), 401
 
 # Вход пользователя
-@app.route("/login", methods=["POST"])
+@app.route("/login_user", methods=["POST"])
 def login():
     data = request.get_json()
     username = data.get("username")
@@ -89,7 +90,7 @@ def login():
 # Выход пользователя
 @app.route("/logout", methods=["POST"])
 def logout():
-    session.pop("user", None)
+    session.clear()
     return jsonify({"message": "Выход выполнен"})
 
 
