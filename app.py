@@ -12,7 +12,7 @@ app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
-app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
 
 Session(app)
 
