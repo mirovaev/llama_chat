@@ -4,6 +4,7 @@ import redis
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
@@ -16,6 +17,7 @@ app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
 
 Session(app)
+CORS(app)
 r = redis.Redis.from_url(os.getenv("REDIS_URL"))
 
 # API-ключ Together.ai (замени на свой)
@@ -33,6 +35,7 @@ def register_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("register.html")  # Показываем страницу регистрации
+
 # Регистрация пользователя
 @app.route("/register", methods=["POST"])
 def register():
@@ -52,8 +55,10 @@ def register():
 
 @app.before_request
 def check_auth():
-    if request.endpoint not in ["login", "static"]:  # Разрешаем доступ к /login и статическим файлам
+    print(f"Сессия перед запросом: {session}")
+    if request.endpoint not in ["login", "static", "register"]:
         if not session.get("user"):
+            print("Не авторизован!")
             return jsonify({"error": "Требуется авторизация"}), 401
 
 # Вход пользователя
@@ -67,10 +72,17 @@ def login():
         return jsonify({"error": "Введите логин и пароль"}), 400
 
     stored_password = r.hget("users", username)
-    if not stored_password or not check_password_hash(stored_password.decode(), password):
+
+    # Если пароля нет в Redis, возвращаем ошибку
+    if not stored_password:
+        return jsonify({"error": "Неверный логин или пароль"}), 401
+
+    # Декодируем байтовую строку, если она существует
+    if not check_password_hash(stored_password.decode('utf-8'), password):
         return jsonify({"error": "Неверный логин или пароль"}), 401
 
     session["user"] = username
+    print(f"Пользователь {username} успешно вошел, сессия: {session}")
     return jsonify({"message": "Вход выполнен"})
 
 
