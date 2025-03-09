@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_session import Session
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # или задайте свой ключ
 
 # Настройки сессий с использованием Redis
 app.config["SESSION_TYPE"] = "redis"
