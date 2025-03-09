@@ -52,7 +52,7 @@ def chat():
     payload = {
         "model": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-p",
         "messages": session["messages"],
-        "max_tokens": 200,
+        "max_tokens": 500,
         "temperature": 0.7
     }
 
