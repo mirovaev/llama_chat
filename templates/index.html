@@ -70,5 +70,35 @@
     }
 
     </script>
+
+<form id="login-form">
+    <input type="text" id="username" placeholder="Логин" required>
+    <input type="password" id="password" placeholder="Пароль" required>
+    <button type="submit">Войти</button>
+</form>
+
+<script>
+document.getElementById("login-form").addEventListener("submit", async function (event) {
+    event.preventDefault(); // Не даём форме перезагружать страницу
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const response = await fetch("/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+        alert("✅ Успешный вход!");
+        location.reload(); // Перезагружаем страницу после авторизации
+    } else {
+        alert("❌ Ошибка: " + data.error);
+    }
+});
+</script>
 </body>
 </html>
