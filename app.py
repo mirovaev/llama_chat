@@ -4,7 +4,7 @@ import redis
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_cors import CORS
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
@@ -17,7 +17,7 @@ app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
 
 Session(app)
-CORS(app)
+
 r = redis.Redis.from_url(os.getenv("REDIS_URL"))
 
 # API-ключ Together.ai (замени на свой)
