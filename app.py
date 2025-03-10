@@ -18,7 +18,8 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True  # Работает только при https
 
 Session(app)
 
@@ -97,9 +98,17 @@ def login():
 
     session["user"] = username
     session.modified = True  # <-- Принудительное сохранение сессии
-    redis_client.set(f"user:{session['user']}:messages", session["messages"])
+
+    # Явно устанавливаем cookie сессии
+    response = jsonify({"message": "Вход выполнен"})
+    response.set_cookie("session", session.sid, httponly=True, secure=True,
+                        samesite="None")  # Устанавливаем cookie вручную
+
+    redis_client.set(f"user:{session['user']}:messages", session.get("messages", []))
+
     print(f"Пользователь {username} успешно вошел, сессия: {session}")
-    return jsonify({"message": "Вход выполнен"})
+
+    return response
 
 
 # Выход пользователя
