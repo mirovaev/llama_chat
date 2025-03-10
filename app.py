@@ -20,17 +20,14 @@ app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-# app.config['SESSION_COOKIE_SECURE'] = True  # Работает только при https
 
 Session(app)
 
 redis_client = redis.from_url(os.getenv("REDIS_URL"))
-# redis_client.set(f"user:{session['user']}:messages", session["messages"])
 
 # API-ключ Together.ai (замени на свой)
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
 URL = "https://api.together.xyz/v1/chat/completions"
-
 
 def login_required(f):
     @wraps(f)
@@ -109,11 +106,9 @@ def login():
         stored_password = redis_client.hget("users", username)
 
         if not stored_password:
-            logging.error(f"Логин {username}: пользователь не найден в Redis")
             return jsonify({"error": "Неверный логин или пароль"}), 401
 
         if not check_password_hash(stored_password.decode('utf-8'), password):
-            logging.error(f"Логин {username}: пароль не совпадает")
             return jsonify({"error": "Неверный логин или пароль"}), 401
 
         session["user"] = username
@@ -122,12 +117,9 @@ def login():
         # Теперь корректно сохраняем список сообщений в Redis
         redis_client.set(f"user:{session['user']}:messages", json.dumps(session.get("messages", [])))
 
-        logging.info(f"Пользователь {username} успешно вошел. Сессия: {session}")
-
         return jsonify({"message": "Вход выполнен"})
 
     except Exception as e:
-        logging.error(f"Ошибка при авторизации {username}: {str(e)}", exc_info=True)
         return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
 # Выход пользователя
@@ -137,18 +129,15 @@ def logout():
     session.modified = True  # <-- Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
 
-
 # Проверка статуса сессии
 @app.route("/status", methods=["GET"])
 def status():
     session_id = request.cookies.get('session')
-    logging.debug(f'Session ID from cookies: {session_id}')
 
     if not session_id:
         return jsonify({'error': 'Authorization required'}), 401
 
     user = redis_client.get(f'session:{session_id}')
-    logging.debug(f'User from session: {user}')
 
     if not user:
         return jsonify({'error': 'Invalid session'}), 401
@@ -158,7 +147,6 @@ def status():
 
 @app.route("/")
 def index():
-    print(f"Сессия в /index: {session}")  # Отладка
     if "user" not in session:  # Проверяем, есть ли пользователь в сессии
         return redirect(url_for("login"))  # Если нет, отправляем на страницу логина
 
@@ -172,7 +160,6 @@ def index():
 @login_required
 def chat():
     data = request.get_json()
-    print("📥 Полученные данные:", data)
 
     if not data or "message" not in data:
         return jsonify({"error": "Некорректный JSON"}), 400
@@ -203,7 +190,6 @@ def chat():
         response = requests.post(URL, json=payload, headers=headers)
         response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
     except requests.exceptions.RequestException as e:
-        print(f"Ошибка при запросе к API: {e}")
         return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
         # Если запрос успешен, возвращаем ответ API
     reply = response.json()["choices"][0]["message"]["content"]
