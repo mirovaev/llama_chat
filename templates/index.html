@@ -59,6 +59,7 @@
             });
 
             const data = await response.json();
+            console.log("Ответ сервера /status:", data);
             if (response.status === 200) {
                 console.log(data.message);  // Вывод сообщения о статусе сессии в консоль
             } else {

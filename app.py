@@ -15,7 +15,7 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # или 'Strict' в зависимости от требований безопасности
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 
 Session(app)
 
@@ -83,6 +83,7 @@ def login():
         return jsonify({"error": "Неверный логин или пароль"}), 401
 
     session["user"] = username
+    session.modified = True  # <-- Принудительное сохранение сессии
     print(f"Пользователь {username} успешно вошел, сессия: {session}")
     return jsonify({"message": "Вход выполнен"})
 
@@ -91,12 +92,14 @@ def login():
 @app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
+    session.modified = True  # <-- Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
 
 
 # Проверка статуса сессии
 @app.route("/status", methods=["GET"])
 def status():
+    print(f"Сессия в /status: {session}")  # Отладка
     if "user" in session:
         return jsonify({"message": f"Вы вошли как {session['user']}"})
     return jsonify({"message": "Вы не авторизованы"}), 401
@@ -104,6 +107,7 @@ def status():
 
 @app.route("/")
 def index():
+    print(f"Сессия в /index: {session}")  # Отладка
     if "user" not in session:  # Проверяем, есть ли пользователь в сессии
         return redirect(url_for("login"))  # Если нет, отправляем на страницу логина
 
