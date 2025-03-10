@@ -52,9 +52,18 @@ def register_page():
     return render_template("register.html")  # Показываем страницу регистрации
 
 # Регистрация пользователя
-@app.route("/register_user", methods=["POST"])
+@app.route("/register_user", methods=["GET", "POST"])
 def register():
+    if request.method == "GET":
+        return redirect(url_for("register_page"))  # Перенаправление на форму регистрации
+
+    if not request.is_json:
+        return jsonify({"error": "Ожидался JSON"}), 400
+
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Некорректный JSON"}), 400
+
     username = data.get("username")
     password = data.get("password")
 
@@ -66,6 +75,7 @@ def register():
 
     hashed_password = generate_password_hash(password)
     redis_client.hset("users", username, hashed_password)
+
     return jsonify({"message": "Пользователь зарегистрирован"})
 
 # @app.before_request
