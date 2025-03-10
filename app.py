@@ -2,6 +2,7 @@ import os
 import requests
 import redis
 import logging
+import json
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
@@ -91,40 +92,43 @@ def login():
     if request.method == "GET":
         return redirect(url_for("login_page"))  # Перенаправление на форму логина
 
-    logging.debug(f"Login request method: {request.method}")
+    try:
+        if not request.is_json:
+            return jsonify({"error": "Ожидался JSON"}), 400
 
-    if not request.is_json:
-        return jsonify({"error": "Ожидался JSON"}), 400
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Некорректный JSON"}), 400
 
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Некорректный JSON"}), 400
+        username = data.get("username")
+        password = data.get("password")
 
-    username = data.get("username")
-    password = data.get("password")
+        if not username or not password:
+            return jsonify({"error": "Введите логин и пароль"}), 400
 
-    if not username or not password:
-        return jsonify({"error": "Введите логин и пароль"}), 400
+        stored_password = redis_client.hget("users", username)
 
-    stored_password = redis_client.hget("users", username)
+        if not stored_password:
+            logging.error(f"Логин {username}: пользователь не найден в Redis")
+            return jsonify({"error": "Неверный логин или пароль"}), 401
 
-    if not stored_password:
-        return jsonify({"error": "Неверный логин или пароль"}), 401
+        if not check_password_hash(stored_password.decode('utf-8'), password):
+            logging.error(f"Логин {username}: пароль не совпадает")
+            return jsonify({"error": "Неверный логин или пароль"}), 401
 
-    if not check_password_hash(stored_password.decode('utf-8'), password):
-        return jsonify({"error": "Неверный логин или пароль"}), 401
+        session["user"] = username
+        session.modified = True  # Принудительное сохранение сессии
 
-    session["user"] = username
-    session.modified = True
+        # Теперь корректно сохраняем список сообщений в Redis
+        redis_client.set(f"user:{session['user']}:messages", json.dumps(session.get("messages", [])))
 
-    response = jsonify({"message": "Вход выполнен"})
+        logging.info(f"Пользователь {username} успешно вошел. Сессия: {session}")
 
-    redis_client.set(f"user:{session['user']}:messages", session.get("messages", []))
+        return jsonify({"message": "Вход выполнен"})
 
-    logging.debug(f"Пользователь {username} успешно вошел, сессия: {session}")
-
-    return response
-
+    except Exception as e:
+        logging.error(f"Ошибка при авторизации {username}: {str(e)}", exc_info=True)
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
 # Выход пользователя
 @app.route("/logout", methods=["POST"])
