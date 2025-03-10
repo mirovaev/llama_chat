@@ -19,7 +19,7 @@ app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
 app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True  # Работает только при https
+# app.config['SESSION_COOKIE_SECURE'] = True  # Работает только при https
 
 Session(app)
 
@@ -68,13 +68,13 @@ def register():
     redis_client.hset("users", username, hashed_password)
     return jsonify({"message": "Пользователь зарегистрирован"})
 
-@app.before_request
-def check_auth():
-    print(f"Сессия перед запросом: {session}")
-    if request.endpoint not in ["login", "static", "register"]:
-        if not session.get("user"):
-            print("Не авторизован!")
-            return jsonify({"error": "Требуется авторизация"}), 401
+# @app.before_request
+# def check_auth():
+#     print(f"Сессия перед запросом: {session}")
+#     if request.endpoint not in ["login", "static", "register"]:
+#         if not session.get("user"):
+#             print("Не авторизован!")
+#             return jsonify({"error": "Требуется авторизация"}), 401
 
 # Вход пользователя
 @app.route("/login_user", methods=["POST"])
@@ -101,8 +101,8 @@ def login():
 
     # Явно устанавливаем cookie сессии
     response = jsonify({"message": "Вход выполнен"})
-    response.set_cookie("session", session.sid, httponly=True, secure=True,
-                        samesite="None")  # Устанавливаем cookie вручную
+    # response.set_cookie("session", session.sid, httponly=True, secure=True,
+    #                     samesite="None")  # Устанавливаем cookie вручную
 
     redis_client.set(f"user:{session['user']}:messages", session.get("messages", []))
 
