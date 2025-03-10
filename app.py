@@ -76,11 +76,20 @@ def register():
 #             print("Не авторизован!")
 #             return jsonify({"error": "Требуется авторизация"}), 401
 
-# Вход пользователя
-@app.route("/login_user", methods=["POST"])
+@app.route("/login_user", methods=["GET", "POST"])
 def login():
+    if request.method == "GET":
+        return redirect(url_for("login_page"))  # Перенаправление на форму логина
+
     logging.debug(f"Login request method: {request.method}")
+
+    if not request.is_json:
+        return jsonify({"error": "Ожидался JSON"}), 400
+
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Некорректный JSON"}), 400
+
     username = data.get("username")
     password = data.get("password")
 
@@ -89,25 +98,20 @@ def login():
 
     stored_password = redis_client.hget("users", username)
 
-    # Если пароля нет в Redis, возвращаем ошибку
     if not stored_password:
         return jsonify({"error": "Неверный логин или пароль"}), 401
 
-    # Декодируем байтовую строку, если она существует
     if not check_password_hash(stored_password.decode('utf-8'), password):
         return jsonify({"error": "Неверный логин или пароль"}), 401
 
     session["user"] = username
-    session.modified = True  # <-- Принудительное сохранение сессии
+    session.modified = True
 
-    # Явно устанавливаем cookie сессии
     response = jsonify({"message": "Вход выполнен"})
-    # response.set_cookie("session", session.sid, httponly=True, secure=True,
-    #                     samesite="None")  # Устанавливаем cookie вручную
 
     redis_client.set(f"user:{session['user']}:messages", session.get("messages", []))
 
-    print(f"Пользователь {username} успешно вошел, сессия: {session}")
+    logging.debug(f"Пользователь {username} успешно вошел, сессия: {session}")
 
     return response
 
