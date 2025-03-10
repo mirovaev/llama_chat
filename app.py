@@ -39,11 +39,11 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route("/login", methods=["POST"])
+@app.route("/login")
 def login_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
-    return render_template("login.html")  # Показываем страницу логина
+    # return render_template("login.html")  # Показываем страницу логина
 
 @app.route("/register", methods=["GET"])
 def register_page():
@@ -79,6 +79,7 @@ def register():
 # Вход пользователя
 @app.route("/login_user", methods=["POST"])
 def login():
+    logging.debug(f"Login request method: {request.method}")
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
