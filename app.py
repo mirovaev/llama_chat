@@ -52,7 +52,7 @@ def register_page():
     return render_template("register.html")  # Показываем страницу регистрации
 
 # Регистрация пользователя
-@app.route("/register", methods=["POST"])
+@app.route("/register_user", methods=["POST"])
 def register():
     data = request.get_json()
     username = data.get("username")

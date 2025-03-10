@@ -24,7 +24,7 @@
             const username = document.getElementById("register-username").value;
             const password = document.getElementById("register-password").value;
 
-            const response = await fetch("/register", {
+            const response = await fetch("/register_user", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
