@@ -1,10 +1,13 @@
 import os
 import requests
 import redis
+import logging
+from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
@@ -19,11 +22,21 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 
 Session(app)
 
-r = redis.Redis.from_url(os.getenv("REDIS_URL"))
+redis_client = redis.from_url(os.getenv("REDIS_URL"))
+redis_client.set(f"user:{session['user']}:messages", session["messages"])
 
 # API-ключ Together.ai (замени на свой)
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
 URL = "https://api.together.xyz/v1/chat/completions"
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user" not in session:
+            return jsonify({"error": "Требуется авторизация"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route("/login")
 def login_page():
@@ -31,7 +44,7 @@ def login_page():
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("login.html")  # Показываем страницу логина
 
-@app.route("/register")
+@app.route("/register", methods=["GET"])
 def register_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
@@ -47,11 +60,11 @@ def register():
     if not username or not password:
         return jsonify({"error": "Введите логин и пароль"}), 400
 
-    if r.hexists("users", username):
+    if redis_client.hexists("users", username):
         return jsonify({"error": "Пользователь уже существует"}), 400
 
     hashed_password = generate_password_hash(password)
-    r.hset("users", username, hashed_password)
+    redis_client.hset("users", username, hashed_password)
     return jsonify({"message": "Пользователь зарегистрирован"})
 
 @app.before_request
@@ -72,7 +85,7 @@ def login():
     if not username or not password:
         return jsonify({"error": "Введите логин и пароль"}), 400
 
-    stored_password = r.hget("users", username)
+    stored_password = redis_client.hget("users", username)
 
     # Если пароля нет в Redis, возвращаем ошибку
     if not stored_password:
@@ -99,10 +112,19 @@ def logout():
 # Проверка статуса сессии
 @app.route("/status", methods=["GET"])
 def status():
-    print(f"Сессия в /status: {session}")  # Отладка
-    if "user" in session:
-        return jsonify({"message": f"Вы вошли как {session['user']}"})
-    return jsonify({"message": "Вы не авторизованы"}), 401
+    session_id = request.cookies.get('session')
+    logging.debug(f'Session ID from cookies: {session_id}')
+
+    if not session_id:
+        return jsonify({'error': 'Authorization required'}), 401
+
+    user = redis_client.get(f'session:{session_id}')
+    logging.debug(f'User from session: {user}')
+
+    if not user:
+        return jsonify({'error': 'Invalid session'}), 401
+
+    return jsonify({'message': f'Hello, {user.decode()}'})
 
 
 @app.route("/")
@@ -118,6 +140,7 @@ def index():
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
+@login_required
 def chat():
     data = request.get_json()
     print("📥 Полученные данные:", data)
@@ -149,13 +172,12 @@ def chat():
 
     response = requests.post(URL, json=payload, headers=headers)
 
-    if response.status_code == 200:
-        reply = response.json()["choices"][0]["message"]["content"]
-        session["messages"].append({"role": "assistant", "content": reply})
-        return jsonify({"response": reply})
-    else:
-        print("❌ Ошибка API:", response.text)
-        return jsonify({"error": f"Ошибка API: {response.text}"}), response.status_code
+    try:
+        response = requests.post(URL, json=payload, headers=headers)
+        response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при запросе к API: {e}")
+        return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
