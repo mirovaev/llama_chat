@@ -97,6 +97,7 @@ def login():
 
     session["user"] = username
     session.modified = True  # <-- Принудительное сохранение сессии
+    redis_client.set(f"user:{session['user']}:messages", session["messages"])
     print(f"Пользователь {username} успешно вошел, сессия: {session}")
     return jsonify({"message": "Вход выполнен"})
 
@@ -170,14 +171,16 @@ def chat():
         "temperature": 0.7
     }
 
-    response = requests.post(URL, json=payload, headers=headers)
-
     try:
         response = requests.post(URL, json=payload, headers=headers)
         response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при запросе к API: {e}")
         return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
+        # Если запрос успешен, возвращаем ответ API
+    reply = response.json()["choices"][0]["message"]["content"]
+    session["messages"].append({"role": "assistant", "content": reply})
+    return jsonify({"response": reply})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
