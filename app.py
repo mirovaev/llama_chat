@@ -39,7 +39,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route("/login")
+@app.route("/login", methods=["POST"])
 def login_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
