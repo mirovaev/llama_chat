@@ -24,7 +24,7 @@
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const response = await fetch("/login", {
+            const response = await fetch("/login_user", {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
