@@ -23,7 +23,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 Session(app)
 
 redis_client = redis.from_url(os.getenv("REDIS_URL"))
-redis_client.set(f"user:{session['user']}:messages", session["messages"])
+# redis_client.set(f"user:{session['user']}:messages", session["messages"])
 
 # API-ключ Together.ai (замени на свой)
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
