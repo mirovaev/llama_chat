@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Deploy to Railway (Dev)
-        uses: railwayapp/cli-action@v2
+        uses: railwayapp/cli-action@v1
         with:
           service: ${{ secrets.RAILWAY_DEV_SERVICE_ID }}
           token: ${{ secrets.RAILWAY_API_TOKEN }}
@@ -34,7 +34,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to Railway (Prod)
-        uses: railwayapp/cli-action@v2
+        uses: railwayapp/cli-action@v1
         with:
           service: ${{ secrets.RAILWAY_PROD_SERVICE_ID }}
           token: ${{ secrets.RAILWAY_API_TOKEN }}
