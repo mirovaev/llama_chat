@@ -62,3 +62,10 @@ jobs:
           railway up --service "${{ secrets.RAILWAY_PROD_SERVICE_ID }}"
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+
+      - name: Debug environment variables
+        run: |
+          echo "RAILWAY_DEV_TEAM_ID: ${{ secrets.RAILWAY_DEV_TEAM_ID }}"
+          echo "RAILWAY_DEV_PROJECT_ID: ${{ secrets.RAILWAY_DEV_PROJECT_ID }}"
+          echo "RAILWAY_PROD_TEAM_ID: ${{ secrets.RAILWAY_PROD_TEAM_ID }}"
+          echo "RAILWAY_PROD_PROJECT_ID: ${{ secrets.RAILWAY_PROD_PROJECT_ID }}"
