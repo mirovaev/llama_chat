@@ -22,7 +22,7 @@ jobs:
 
       - name: Link project to Railway (Dev)
         run: |
-          railway link --team "${{ secrets.RAILWAY_DEV_TEAM_ID }}" --project "${{ secrets.RAILWAY_DEV_PROJECT_ID }}" --env "Development" --service "web"
+          railway link --team "${{ secrets.RAILWAY_DEV_TEAM_ID }}" --project "${{ secrets.RAILWAY_DEV_PROJECT_ID }}" --environment "Development" --service "web"
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
@@ -53,7 +53,7 @@ jobs:
 
       - name: Link project to Railway (Prod)
         run: |
-          railway link --team "${{ secrets.RAILWAY_PROD_TEAM_ID }}" --project "${{ secrets.RAILWAY_PROD_PROJECT_ID }}" --env "Production" --service "web"
+          railway link --team "${{ secrets.RAILWAY_PROD_TEAM_ID }}" --project "${{ secrets.RAILWAY_PROD_PROJECT_ID }}" --environment "Production" --service "web"
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
