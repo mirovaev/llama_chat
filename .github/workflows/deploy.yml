@@ -20,6 +20,12 @@ jobs:
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
+      - name: Link project to Railway (Dev)
+        run: |
+          railway link --project ${{ secrets.RAILWAY_DEV_PROJECT_ID }}
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+
       - name: Deploy to Railway (Dev)
         run: |
           railway up --service ${{ secrets.RAILWAY_DEV_SERVICE_ID }}
@@ -42,6 +48,12 @@ jobs:
       - name: Install Railway CLI
         run: |
           curl -fsSL https://railway.app/install.sh | sh
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+
+      - name: Link project to Railway (Prod)
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROD_PROJECT_ID }}
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
