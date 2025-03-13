@@ -3,47 +3,14 @@ name: Deploy to Railway
 on:
   push:
     branches:
-      - dev
       - main
 
 jobs:
-  deploy_dev:
-    if: github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-
-      - name: Link project to Railway (Dev)
-        run: |
-          railway link --team "${{ secrets.RAILWAY_DEV_TEAM_ID }}" --project "${{ secrets.RAILWAY_DEV_PROJECT_ID }}" --environment "Development" --service "web"
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-
-      - name: Deploy to Railway (Dev)
-        run: |
-          railway up --service "${{ secrets.RAILWAY_DEV_SERVICE_ID }}"
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-
   deploy_prod:
-    if: github.ref == 'refs/heads/main'
-    needs: deploy_dev
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-
-      - name: Wait for approval
-        uses: hmarr/auto-approve-action@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Railway CLI
         run: |
@@ -51,21 +18,14 @@ jobs:
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
-      - name: Link project to Railway (Prod)
+      - name: Link project to Railway
         run: |
-          railway link --team "${{ secrets.RAILWAY_PROD_TEAM_ID }}" --project "${{ secrets.RAILWAY_PROD_PROJECT_ID }}" --environment "Production" --service "web"
+          railway link --project ${{ secrets.RAILWAY_PROD_PROJECT_ID }}
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
-      - name: Deploy to Railway (Prod)
+      - name: Deploy to Railway
         run: |
-          railway up --service "${{ secrets.RAILWAY_PROD_SERVICE_ID }}"
+          railway up --service ${{ secrets.RAILWAY_PROD_SERVICE_ID }}
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-
-      - name: Debug environment variables
-        run: |
-          echo "RAILWAY_DEV_TEAM_ID: ${{ secrets.RAILWAY_DEV_TEAM_ID }}"
-          echo "RAILWAY_DEV_PROJECT_ID: ${{ secrets.RAILWAY_DEV_PROJECT_ID }}"
-          echo "RAILWAY_PROD_TEAM_ID: ${{ secrets.RAILWAY_PROD_TEAM_ID }}"
-          echo "RAILWAY_PROD_PROJECT_ID: ${{ secrets.RAILWAY_PROD_PROJECT_ID }}"
