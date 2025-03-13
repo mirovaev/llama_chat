@@ -1,93 +1,81 @@
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    margin: 0;
-    padding: 20px;
-    text-align: center;
-}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат с LLaMA</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Чат с LLaMA</h1>
 
-h1 {
-    color: #333;
-}
+    {% if session.get("user") %}
+        <!-- Если пользователь авторизован, показываем чат -->
+        <div id="chat-box"></div>
+        <input type="text" id="user-input" placeholder="Введите сообщение..." onkeydown="onKeyDown(event)">
+        <button onclick="sendMessage()">Отправить</button>
+    {% else %}
+        <!-- Если не авторизован, показываем ссылку для входа -->
+        <p>Пожалуйста, <a href="{{ url_for('login') }}">войдите</a> для использования чата.</p>
+    {% endif %}
 
-#chat-box {
-    width: 80%;
-    max-width: 600px;
-    height: 400px;
-    margin: 20px auto;
-    padding: 10px;
-    border: 1px solid #ccc;
-    background: white;
-    overflow-y: auto;
-    border-radius: 8px;
-    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-}
+    <script>
+        // Функция для обработки нажатия клавиши Enter в поле ввода
+        function onKeyDown(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
 
-p {
-    padding: 8px;
-    border-radius: 5px;
-}
+        // Функция для добавления сообщения в чат
+        function addMessage(sender, message) {
+            let chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML += `<p><strong>${sender}:</strong> ${message}</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight; // Автопрокрутка вниз
+        }
 
-p strong {
-    color: #007bff;
-}
+        // Функция для отправки сообщения на сервер и получения ответа
+        async function sendMessage() {
+            let inputField = document.getElementById("user-input");
+            let message = inputField.value.trim();
+            if (!message) return;
 
-.user-message {
-    text-align: right;
-    background-color: #dcf8c6;
-}
+            addMessage("Вы", message);
 
-.bot-message {
-    text-align: left;
-    background-color: #f1f1f1;
-}
+            let response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message })
+            });
 
-input {
-    width: 60%;
-    padding: 10px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
+            let data = await response.json();
+            if (data.response) {
+                addMessage("Бот", data.response);
+            } else {
+                addMessage("Ошибка", data.error || "Ошибка сервера");
+            }
 
-button {
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
+            inputField.value = "";
+        }
 
-button:hover {
-    background-color: #0056b3;
-}
+        // Добавляем код для запроса состояния сессии
+        async function getStatus() {
+            const response = await fetch('/status', {
+                method: 'GET',
+                credentials: 'include'  // Включение cookies для передачи сессии
+            });
 
-@media (max-width: 768px) {
-    #chat-box {
-        width: 90%;
-    }
+            const data = await response.json();
+            console.log("Ответ сервера /status:", data);
+            if (response.status === 200) {
+                console.log(data.message);  // Вывод сообщения о статусе сессии в консоль
+            } else {
+                console.error(data.message);  // Вывод ошибки в консоль
+            }
+        }
 
-    input {
-        width: 70%;
-    }
-
-    button {
-        width: 25%;
-    }
-}
-
-@media (max-width: 480px) {
-    #chat-box {
-        width: 95%;
-        height: 300px;
-    }
-
-    input {
-        width: 80%;
-    }
-
-    button {
-        width: 20%;
-    }
-}
+        // Вызываем getStatus при загрузке страницы
+        window.onload = getStatus;
+    </script>
+</body>
+</html>

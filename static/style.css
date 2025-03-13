@@ -62,3 +62,32 @@ button {
 button:hover {
     background-color: #0056b3;
 }
+
+@media (max-width: 768px) {
+    #chat-box {
+        width: 90%;
+    }
+
+    input {
+        width: 70%;
+    }
+
+    button {
+        width: 25%;
+    }
+}
+
+@media (max-width: 480px) {
+    #chat-box {
+        width: 95%;
+        height: 300px;
+    }
+
+    input {
+        width: 80%;
+    }
+
+    button {
+        width: 20%;
+    }
+}
