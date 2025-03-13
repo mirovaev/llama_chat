@@ -57,10 +57,18 @@ button {
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    width: auto; /* Убираем фиксированную ширину */
 }
 
 button:hover {
     background-color: #0056b3;
+}
+
+/* Добавляем flexbox для контейнера ввода и кнопки */
+.input-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px; /* Отступ сверху */
 }
 
 @media (max-width: 768px) {
@@ -72,8 +80,9 @@ button:hover {
         width: 70%;
     }
 
+    /* Убираем фиксированную ширину кнопки на планшетах */
     button {
-        width: 25%;
+        width: auto;
     }
 }
 
@@ -88,6 +97,7 @@ button:hover {
     }
 
     button {
-        width: 20%;
+        width: auto; /* Кнопка не будет обрезаться */
+        margin-top: 10px; /* Отступ сверху */
     }
 }
