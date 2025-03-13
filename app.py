@@ -114,6 +114,9 @@ def login():
         session["user"] = username
         session.modified = True  # Принудительное сохранение сессии
 
+        # Сохраняем сессию в Redis по пользователю
+        redis_client.set(f"user:{username}:session", session.sid)  # Привязка сессии к пользователю
+
         # Теперь корректно сохраняем список сообщений в Redis
         redis_client.set(f"user:{session['user']}:messages", json.dumps(session.get("messages", [])))
 
@@ -125,25 +128,31 @@ def login():
 # Выход пользователя
 @app.route("/logout", methods=["POST"])
 def logout():
+    username = session.get('user')
+
+    if username:
+        # Удаляем сессионные данные для пользователя из Redis
+        redis_client.delete(f"user:{username}:session")
+        redis_client.delete(f"user:{username}:messages")
+
     session.clear()
-    session.modified = True  # <-- Принудительное сохранение сессии
+    session.modified = True  # Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
 
-# Проверка статуса сессии
 @app.route("/status", methods=["GET"])
 def status():
-    session_id = request.cookies.get('session')
+    username = session.get('user')
 
-    if not session_id:
+    if not username:
         return jsonify({'error': 'Authorization required'}), 401
 
-    user = redis_client.get(f'session:{session_id}')
+    # Получаем идентификатор сессии для пользователя из Redis
+    session_id = redis_client.get(f"user:{username}:session")
 
-    if not user:
+    if not session_id:
         return jsonify({'error': 'Invalid session'}), 401
 
-    return jsonify({'message': f'Hello, {user.decode()}'})
-
+    return jsonify({'message': f'Hello, {username}'})
 
 @app.route("/")
 def index():
