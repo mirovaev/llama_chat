@@ -171,6 +171,9 @@ def index():
     return render_template("index.html")
 
 
+import requests
+
+
 def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -178,8 +181,17 @@ def send_to_telegram(message):
         'text': message,
         'parse_mode': 'Markdown'
     }
-    requests.post(url, json=payload)
 
+    try:
+        response = requests.post(url, json=payload)
+        # Логируем успешный ответ
+        if response.status_code == 200:
+            print(f"Message sent successfully: {response.json()}")
+        else:
+            print(f"Failed to send message: {response.status_code} - {response.text}")
+        response.raise_for_status()  # Это также выбросит исключение в случае ошибки
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message: {e}")
 
 @app.route("/chat", methods=["POST"])
 @login_required
