@@ -181,10 +181,10 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "meta-llama/Meta Llama 3.3 70B Instruct Turbo Free",
-        "messages": session["messages"],
-        "max_tokens": 500,
-        "temperature": 0.7
+    "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "messages": session["messages"],
+    "max_tokens": 500,
+    "temperature": 0.7
     }
 
     try:
