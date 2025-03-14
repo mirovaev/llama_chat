@@ -29,13 +29,20 @@ redis_client = redis.from_url(os.getenv("REDIS_URL"))
 API_KEY = "a8d9aae02f05e56698204a9912f2c4354dbfcc6cb974e3a6c0a95c941644c49d"
 URL = "https://api.together.xyz/v1/chat/completions"
 
+# Токен Telegram-бота
+TELEGRAM_BOT_TOKEN = '7905406053:AAHHyn4jc1Enk5txFE9ONwowgN9-6OGApig'
+CHAT_ID = '456034821'
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user" not in session:
             return jsonify({"error": "Требуется авторизация"}), 401
         return f(*args, **kwargs)
+
     return decorated_function
+
 
 @app.route("/login", methods=["GET"])
 def login_page():
@@ -43,11 +50,13 @@ def login_page():
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("login.html")  # Показываем страницу логина
 
+
 @app.route("/register", methods=["GET"])
 def register_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("register.html")  # Показываем страницу регистрации
+
 
 # Регистрация пользователя
 @app.route("/register_user", methods=["GET", "POST"])
@@ -75,6 +84,7 @@ def register():
     redis_client.hset("users", username, hashed_password)
 
     return jsonify({"message": "Пользователь зарегистрирован"})
+
 
 @app.route("/login_user", methods=["GET", "POST"])
 def login():
@@ -117,6 +127,7 @@ def login():
     except Exception as e:
         return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
+
 # Выход пользователя
 @app.route("/logout", methods=["POST"])
 def logout():
@@ -130,6 +141,7 @@ def logout():
     session.clear()
     session.modified = True  # Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
+
 
 @app.route("/status", methods=["GET"])
 def status():
@@ -146,6 +158,7 @@ def status():
 
     return jsonify({'message': f'Hello, {username}'})
 
+
 @app.route("/")
 def index():
     if "user" not in session:  # Проверяем, есть ли пользователь в сессии
@@ -156,6 +169,17 @@ def index():
         session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
 
     return render_template("index.html")
+
+
+def send_to_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': message,
+        'parse_mode': 'Markdown'
+    }
+    requests.post(url, json=payload)
+
 
 @app.route("/chat", methods=["POST"])
 @login_required
@@ -176,15 +200,33 @@ def chat():
     # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
 
+    system_prompt = """
+    Ты — виртуальный помощник для интернет-магазина цветов. Твоя задача — помогать клиентам с выбором букетов и композиций, оформлять заказы и отправлять уведомления владельцу магазина в Telegram.
+    Оформляй заказ в формате:
+
+    Новый заказ!
+    📦 Букет: {название/описание}
+    👤 Имя: {имя клиента}
+    📞 Телефон: {номер}
+    🚚 Адрес: {адрес доставки}
+    📅 Дата и время: {дата/время}
+    💬 Комментарий: {пожелания клиента}
+    🛍️ Дополнительно: {доп. товары}
+
+    После этого вызывай функцию `send_to_telegram()`.
+    """
+
+    session["messages"].insert(0, {"role": "system", "content": system_prompt})
+
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
-    "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "messages": session["messages"],
-    "max_tokens": 500,
-    "temperature": 0.7
+        "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "messages": session["messages"],
+        "max_tokens": 500,
+        "temperature": 0.7
     }
 
     try:
@@ -195,7 +237,13 @@ def chat():
         # Если запрос успешен, возвращаем ответ API
     reply = response.json()["choices"][0]["message"]["content"]
     session["messages"].append({"role": "assistant", "content": reply})
+
+    # Если LLaMA сгенерировала заказ, отправляем его в Telegram
+    if "Новый заказ!" in reply:
+        send_to_telegram(reply)
+
     return jsonify({"response": reply})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
