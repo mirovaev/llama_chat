@@ -26,7 +26,7 @@ Session(app)
 redis_client = redis.from_url(os.getenv("REDIS_URL"))
 
 # API-ключ Together.ai
-API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
+API_KEY = "a8d9aae02f05e56698204a9912f2c4354dbfcc6cb974e3a6c0a95c941644c49d"
 URL = "https://api.together.xyz/v1/chat/completions"
 
 def login_required(f):
