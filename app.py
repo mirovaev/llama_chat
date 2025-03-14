@@ -25,7 +25,7 @@ Session(app)
 
 redis_client = redis.from_url(os.getenv("REDIS_URL"))
 
-# API-ключ Together.ai (замени на свой)
+# API-ключ Together.ai
 API_KEY = "b1b8d176370c2e335662bf870ba959e9db1c9447702f2df1023e59fed0e5f3cd"
 URL = "https://api.together.xyz/v1/chat/completions"
 
@@ -75,14 +75,6 @@ def register():
     redis_client.hset("users", username, hashed_password)
 
     return jsonify({"message": "Пользователь зарегистрирован"})
-
-# @app.before_request
-# def check_auth():
-#     print(f"Сессия перед запросом: {session}")
-#     if request.endpoint not in ["login", "static", "register"]:
-#         if not session.get("user"):
-#             print("Не авторизован!")
-#             return jsonify({"error": "Требуется авторизация"}), 401
 
 @app.route("/login_user", methods=["GET", "POST"])
 def login():
@@ -189,7 +181,7 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-p",
+        "model": "meta-llama/Meta Llama 3.3 70B Instruct Turbo Free",
         "messages": session["messages"],
         "max_tokens": 500,
         "temperature": 0.7
