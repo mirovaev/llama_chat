@@ -214,10 +214,16 @@ def chat():
 
     # Инициализация сессии, если её нет
     if "messages" not in session:
-        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
 
     # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
+
+    # Проверка, есть ли имя пользователя
+    if "user_name" not in session:
+        reply = "Как вас зовут?"  # Спрашиваем имя, если его нет в сессии
+    else:
+        reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
 
     # Загружаем системный промт из файла
     system_prompt = load_system_prompt()
