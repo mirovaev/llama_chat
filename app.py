@@ -1,4 +1,5 @@
 import os
+import re
 import redis
 import logging
 import json
@@ -264,7 +265,9 @@ def chat():
         session["completed"] = True  # Отмечаем завершённый заказ
 
     # Если AI сгенерировала заказ, отправляем его в Telegram
-    if any(phrase in reply.lower() for phrase in ["заказ подтвержден", "оформлен", "заказ принят", "доставим"]):
+
+    if any(re.search(rf"\b{phrase}\b", reply.lower()) for phrase in
+           ["заказ подтвержден", "оформлен", "заказ принят", "доставим"]):
         send_to_telegram(f"🚀 Новый заказ!\n\n{reply}")
 
     return jsonify({"response": reply})
