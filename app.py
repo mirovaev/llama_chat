@@ -25,8 +25,10 @@ Session(app)
 redis_client = redis.from_url(os.getenv("REDIS_URL"))
 
 # API-ключ Together.ai
-API_KEY = "a8d9aae02f05e56698204a9912f2c4354dbfcc6cb974e3a6c0a95c941644c49d"
-URL = "https://api.together.xyz/v1/chat/completions"
+# API_KEY = "a8d9aae02f05e56698204a9912f2c4354dbfcc6cb974e3a6c0a95c941644c49d"
+API_KEY = "sk-PxEPRj0GrnGxNGmgnlufcxYEm277BCyl"
+# URL = "https://api.together.xyz/v1/chat/completions"
+URL = "http://o10.ai.2mx.dev/v1/models"
 
 # Токен Telegram-бота
 TELEGRAM_BOT_TOKEN = '7905406053:AAHHyn4jc1Enk5txFE9ONwowgN9-6OGApig'
@@ -237,7 +239,8 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        # "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "model": "gemma3: 12b",
         "messages": session["messages"],
         "max_tokens": 500,
         "temperature": 0.7
