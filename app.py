@@ -240,7 +240,7 @@ def chat():
     }
     payload = {
         # "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-        "model": "gemma3:12b",
+        "model": "llama3.1:8b",
         "messages": session["messages"],
         "max_tokens": 500,
         "temperature": 0.7
