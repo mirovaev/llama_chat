@@ -28,7 +28,7 @@ redis_client = redis.from_url(os.getenv("REDIS_URL"))
 # API_KEY = "a8d9aae02f05e56698204a9912f2c4354dbfcc6cb974e3a6c0a95c941644c49d"
 API_KEY = "sk-PxEPRj0GrnGxNGmgnlufcxYEm277BCyl"
 # URL = "https://api.together.xyz/v1/chat/completions"
-URL = "http://o10.ai.2mx.dev/v1/models"
+URL = "http://o10.ai.2mx.dev/v1/chat/completions"
 
 # Токен Telegram-бота
 TELEGRAM_BOT_TOKEN = '7905406053:AAHHyn4jc1Enk5txFE9ONwowgN9-6OGApig'
