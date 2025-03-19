@@ -218,18 +218,13 @@ def chat():
     if session.get("completed"):
         return jsonify({"response": "Спасибо за заказ! Если вам нужно что-то ещё, просто напишите мне"})
 
-    # Инициализация сессии, если её нет
-    if "messages" not in session:
-        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
-
-    # Добавление сообщения пользователя
-    session["messages"].append({"role": "user", "content": user_input})
-
-    # Проверка, есть ли имя пользователя
+    # Если имя ещё не сохранено — сохраняем
     if "user_name" not in session:
-        reply = "Как вас зовут?"  # Спрашиваем имя, если его нет в сессии
-    else:
-        reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
+        session["user_name"] = user_input
+        return jsonify({"response": f"Приятно познакомиться, {user_input}! Чем могу помочь?"})
+
+    # Если пользователь уже представился
+    reply = f"Привет, {session['user_name']}! Чем могу помочь?"
 
     # Загружаем системный промт из файла
     system_prompt = load_system_prompt()
@@ -243,7 +238,6 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        # "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
         "model": "llama3.1:8b",
         "messages": session["messages"],
         "max_tokens": 500,
@@ -252,29 +246,13 @@ def chat():
 
     try:
         response = requests.post(URL, json=payload, headers=headers)
-        response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
+        response.raise_for_status()
     except requests.exceptions.RequestException as e:
         return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
 
     reply = response.json()["choices"][0]["message"]["content"]
     session["messages"].append({"role": "assistant", "content": reply})
 
-    # Проверка подтверждения заказа
-    if any(re.search(rf"\b{phrase}\b", reply.lower()) for phrase in
-           ["заказ подтвержден", "оформлен", "заказ принят", "доставим"]):
-        order_id = generate_order_id()  # Генерация номера заказа
-        order_data = {
-            "order_id": order_id,
-            "status": "Ожидает доставки",
-            "details": reply
-        }
-        redis_client.set(f"user:{session['user']}:order", json.dumps(order_data))
-
-        send_to_telegram(f"🚀 Новый заказ #{order_id}!\n\n{reply}")
-
-        return jsonify({"response": f"Ваш заказ подтверждён! Номер заказа: {order_id}"})
-
-    # Если бот ещё не завершил заказ, возвращаем ответ
     return jsonify({"response": reply})
 
 def generate_order_id():
