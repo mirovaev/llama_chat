@@ -8,6 +8,8 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
+# Загружаем переменные из .env
+load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -26,9 +28,6 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
 redis_client = redis.from_url(os.getenv("REDIS_URL"))
-
-# Загружаем переменные из .env
-load_dotenv()
 
 # Используем их в коде
 API_KEY = os.getenv("API_KEY")
