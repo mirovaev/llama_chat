@@ -2,16 +2,12 @@ import os
 import redis
 import logging
 import json
-import uuid
-import requests
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
@@ -32,8 +28,9 @@ API_KEY = "sk-PxEPRj0GrnGxNGmgnlufcxYEm277BCyl"
 URL = "http://o10.ai.2mx.dev/v1/chat/completions"
 
 # Токен Telegram-бота
-YOUR_TELEGRAM_BOT_TOKEN = '7905406053:AAHHyn4jc1Enk5txFE9ONwowgN9-6OGApig'
-YOUR_CHAT_ID = '456034821'
+TELEGRAM_BOT_TOKEN = '7905406053:AAHHyn4jc1Enk5txFE9ONwowgN9-6OGApig'
+CHAT_ID = '456034821'
+
 
 def login_required(f):
     @wraps(f)
@@ -44,17 +41,20 @@ def login_required(f):
 
     return decorated_function
 
+
 @app.route("/login", methods=["GET"])
 def login_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("login.html")  # Показываем страницу логина
 
+
 @app.route("/register", methods=["GET"])
 def register_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("register.html")  # Показываем страницу регистрации
+
 
 # Регистрация пользователя
 @app.route("/register_user", methods=["GET", "POST"])
@@ -82,6 +82,7 @@ def register():
     redis_client.hset("users", username, hashed_password)
 
     return jsonify({"message": "Пользователь зарегистрирован"})
+
 
 @app.route("/login_user", methods=["GET", "POST"])
 def login():
@@ -124,6 +125,7 @@ def login():
     except Exception as e:
         return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
+
 # Выход пользователя
 @app.route("/logout", methods=["POST"])
 def logout():
@@ -138,47 +140,22 @@ def logout():
     session.modified = True  # Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
 
+
 @app.route("/status", methods=["GET"])
 def status():
     username = session.get('user')
-    if not username:
 
-        logger.error("Authorization required")
+    if not username:
         return jsonify({'error': 'Authorization required'}), 401
 
-    order_data = redis_client.get(f"user:{username}:order")
-    if order_data is None:
-        logger.info(f"No active orders for user {username}")
-        return jsonify({'message': 'У вас пока нет активных заказов.'})
+    # Получаем идентификатор сессии для пользователя из Redis
+    session_id = redis_client.get(f"user:{username}:session")
 
-    try:
-        order_data = json.loads(order_data)
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON from Redis for user {username}: {e}")
-        return jsonify({'error': 'Invalid data in Redis'}), 500
+    if not session_id:
+        return jsonify({'error': 'Invalid session'}), 401
 
-    if 'order_id' not in order_data or 'status' not in order_data:
-        logger.warning(f"Incomplete order data for user {username}: {order_data}")
-        return jsonify({'message': 'У вас пока нет активных заказов.'})
+    return jsonify({'message': f'Hello, {username}'})
 
-    return jsonify({
-        'message': f"Ваш заказ #{order_data['order_id']} - {order_data['status']}."
-    })
-
-@app.route("/create_order", methods=["POST"])
-@login_required
-def create_order():
-    username = session.get("user")
-    if not username:
-        return jsonify({"error": "Требуется авторизация"}), 401
-
-    order_id = generate_order_id()
-    order_data = {"order_id": order_id, "status": "В обработке"}
-
-    # Сохраняем заказ в Redis
-    redis_client.set(f"user:{username}:order", json.dumps(order_data))
-
-    return jsonify({"message": f"Заказ #{order_id} создан и отправлен в обработку."})
 
 @app.route("/")
 def index():
@@ -192,23 +169,27 @@ def index():
     return render_template("index.html")
 
 
-def send_order_to_telegram(order_data):
-    # Замените на ваш токен и чат ID
-    token = "YOUR_TELEGRAM_BOT_TOKEN"
-    chat_id = "YOUR_CHAT_ID"
+import requests
 
-    message = (
-        f"Новый заказ от {order_data['user_name']}:\n"
-        f"Цветы: {order_data['flowers']}\n"
-        f"Детали: {order_data['details']}\n"
-        f"Дата доставки: {order_data['delivery_date']}\n"
-        f"Адрес доставки: {order_data['delivery_address']}"
-    )
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    data = {"chat_id": chat_id, "text": message}
-    requests.post(url, json=data)
+def send_to_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': message,
+        'parse_mode': 'Markdown'
+    }
 
+    try:
+        response = requests.post(url, json=payload)
+        # Логируем успешный ответ
+        if response.status_code == 200:
+            print(f"Message sent successfully: {response.json()}")
+        else:
+            print(f"Failed to send message: {response.status_code} - {response.text}")
+        response.raise_for_status()  # Это также выбросит исключение в случае ошибки
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message: {e}")
 
 def load_system_prompt():
     try:
@@ -218,102 +199,63 @@ def load_system_prompt():
         logging.error(f"Ошибка при загрузке системного промта: {e}")
         return None
 
-def generate_order_id():
-    return str(uuid.uuid4())
-
-# Обработчик чата
 @app.route("/chat", methods=["POST"])
+@login_required
 def chat():
-    user_input = request.json.get("message")
+    data = request.get_json()
 
-    # Инициализация списка сообщений, если он еще не создан
+    if not data or "message" not in data:
+        return jsonify({"error": "Некорректный JSON"}), 400
+
+    user_input = data["message"].strip()
+    if not user_input:
+        return jsonify({"error": "Пустой запрос"}), 400
+
+    # Инициализация сессии, если её нет
     if "messages" not in session:
-        session["messages"] = []
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
 
+    # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
 
-    # Шаг 1: Проверка наличия имени пользователя и запоминание его
-    def get_user_name():
-        return session.get("user_name")
-
-    def set_user_name(name):
-        session["user_name"] = name
-
-    # Шаг 2: Проверка наличия активного заказа и предоставление статуса или предложение нового заказа
-    def check_order_status(order_id):
-        return "Ваш заказ находится в обработке."
-
-    def provide_order_status_or_new_order():
-        if session.get("completed"):
-            reply = "Спасибо за заказ! Если вам нужно что-то ещё, просто напишите мне."
-        else:
-            reply = f"Привет, {session['user_name']}! У вас есть активный заказ. Хотите узнать статус или оформить новый?"
-        session["messages"].append({"role": "assistant", "content": reply})
-
-    # Шаг 3: Пошаговое задание вопросов для сбора данных заказа
-    def handle_order_step(step):
-        if step == 1:
-            reply = "Как вас зовут?"
-        elif step == 2:
-            reply = "Выберите цветы для букета."
-        elif step == 3:
-            reply = "Введите информацию для оформления заказа."
-        elif step == 4:
-            reply = "Введите дату доставки (гггг-мм-дд)."
-        elif step == 5:
-            reply = "Введите адрес доставки."
-        else:
-            reply = "Некорректный шаг."
-
-        session["messages"].append({"role": "assistant", "content": reply})
-
-    # Шаг 4: Сохранение данных заказа
-    def save_order_data(step, data):
-        if step == 1:
-            set_user_name(data)
-        elif step == 2:
-            session["flowers"] = data
-        elif step == 3:
-            session["details"] = data
-        elif step == 4:
-            session["delivery_date"] = data
-        elif step == 5:
-            session["delivery_address"] = data
-
-    # Шаг 5: Создание заказа и отправка в Telegram (предположим, у вас есть функция send_order_to_telegram)
-    def create_order():
-        order_data = {
-            "user_name": session.get("user_name"),
-            "flowers": session.get("flowers"),
-            "details": session.get("details"),
-            "delivery_date": session.get("delivery_date"),
-            "delivery_address": session.get("delivery_address")
-        }
-        # send_order_to_telegram(order_data)  # Ваша функция для отправки заказа в Telegram
-        reply = "Заказ успешно оформлен!"
-        session["messages"].append({"role": "assistant", "content": reply})
-        session.pop("completed", None)
-
-    # Основная логика обработчика чата
-    if not get_user_name():
-        set_user_name(user_input)
-        handle_order_step(1)  # Начать с первого шага
+    # Проверка, есть ли имя пользователя
+    if "user_name" not in session:
+        reply = "Как вас зовут?"  # Спрашиваем имя, если его нет в сессии
     else:
-        if user_input.isdigit() and int(user_input) in range(1, 6):
-            step = int(user_input)
-            handle_order_step(step)
-        elif session.get("order_step"):
-            step = session["order_step"]
-            save_order_data(step, user_input)
-            session["order_step"] += 1
-            if step == 5:
-                create_order()
-            else:
-                handle_order_step(session["order_step"])
-        else:
-            provide_order_status_or_new_order()
+        reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
 
-    return jsonify({"message": "Принято"})
+    # Загружаем системный промт из файла
+    system_prompt = load_system_prompt()
+    if not system_prompt:
+        return jsonify({"error": "Не удалось загрузить системный промт"}), 500
+
+    session["messages"].insert(0, {"role": "system", "content": system_prompt})
+
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama3.1:8b",
+        "messages": session["messages"],
+        "max_tokens": 500,
+        "temperature": 0.7
+    }
+
+    try:
+        response = requests.post(URL, json=payload, headers=headers)
+        response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
+
+    reply = response.json()["choices"][0]["message"]["content"]
+    session["messages"].append({"role": "assistant", "content": reply})
+
+    # Если LLaMA сгенерировала заказ, отправляем его в Telegram
+    if "Новый заказ!" in reply:
+        send_to_telegram(reply)
+
+    return jsonify({"response": reply})
 
 
 if __name__ == "__main__":
