@@ -8,6 +8,7 @@ from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
@@ -203,11 +204,13 @@ def load_system_prompt():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message")
+    logger.debug(f"Получено сообщение от пользователя: {user_input}")
 
     # Инициализация списка сообщений, если он еще не создан
     if "messages" not in session:
         session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
 
+    logger.debug(f"Текущие сообщения: {session['messages']}")
     session["messages"].append({"role": "user", "content": user_input})
 
     # Шаг 1: Проверка наличия имени пользователя и запоминание его
@@ -230,6 +233,7 @@ def chat():
 
     # Шаг 3: Пошаговое задание вопросов для сбора данных заказа
     def handle_order_step(step):
+        logger.debug(f"Обрабатываем шаг: {step}")
         if step == 1:
             reply = "Как вас зовут?"
         elif step == 2:
@@ -243,10 +247,12 @@ def chat():
         else:
             reply = "Некорректный шаг."
 
+        logger.debug(f"Ответ на шаг {step}: {reply}")
         session["messages"].append({"role": "assistant", "content": reply})
 
     # Шаг 4: Сохранение данных заказа
     def save_order_data(step, data):
+        logger.debug(f"Сохраняем данные для шага {step}: {data}")
         if step == 1:
             set_user_name(data)
         elif step == 2:
@@ -273,25 +279,29 @@ def chat():
         session.pop("completed", None)
 
     # Основная логика обработчика чата
-    if not get_user_name():
-        set_user_name(user_input)
-        handle_order_step(1)  # Начать с первого шага
-    else:
-        if user_input.isdigit() and int(user_input) in range(1, 6):
-            step = int(user_input)
-            handle_order_step(step)
-        elif session.get("order_step"):
-            step = session["order_step"]
-            save_order_data(step, user_input)
-            session["order_step"] += 1
-            if step == 5:
-                create_order()
-            else:
-                handle_order_step(session["order_step"])
+    try:
+        if not get_user_name():
+            set_user_name(user_input)
+            handle_order_step(1)  # Начать с первого шага
         else:
-            provide_order_status_or_new_order()
+            if user_input.isdigit() and int(user_input) in range(1, 6):
+                step = int(user_input)
+                handle_order_step(step)
+            elif session.get("order_step"):
+                step = session["order_step"]
+                save_order_data(step, user_input)
+                session["order_step"] += 1
+                if step == 5:
+                    create_order()
+                else:
+                    handle_order_step(session["order_step"])
+            else:
+                provide_order_status_or_new_order()
+
+    except Exception as e:
+        logger.error(f"Произошла ошибка: {e}")
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
     return jsonify({"message": "Принято"})
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
