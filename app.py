@@ -199,64 +199,99 @@ def load_system_prompt():
         logging.error(f"Ошибка при загрузке системного промта: {e}")
         return None
 
+# Обработчик чата
 @app.route("/chat", methods=["POST"])
-@login_required
 def chat():
-    data = request.get_json()
+    user_input = request.json.get("message")
 
-    if not data or "message" not in data:
-        return jsonify({"error": "Некорректный JSON"}), 400
-
-    user_input = data["message"].strip()
-    if not user_input:
-        return jsonify({"error": "Пустой запрос"}), 400
-
-    # Инициализация сессии, если её нет
+    # Инициализация списка сообщений, если он еще не создан
     if "messages" not in session:
-        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
 
-    # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
 
-    # Проверка, есть ли имя пользователя
-    if "user_name" not in session:
-        reply = "Как вас зовут?"  # Спрашиваем имя, если его нет в сессии
+    # Шаг 1: Проверка наличия имени пользователя и запоминание его
+    def get_user_name():
+        return session.get("user_name")
+
+    def set_user_name(name):
+        session["user_name"] = name
+
+    # Шаг 2: Проверка наличия активного заказа и предоставление статуса или предложение нового заказа
+    def check_order_status(order_id):
+        return "Ваш заказ находится в обработке."
+
+    def provide_order_status_or_new_order():
+        if session.get("completed"):
+            reply = "Спасибо за заказ! Если вам нужно что-то ещё, просто напишите мне."
+        else:
+            reply = f"Привет, {session['user_name']}! У вас есть активный заказ. Хотите узнать статус или оформить новый?"
+        session["messages"].append({"role": "assistant", "content": reply})
+
+    # Шаг 3: Пошаговое задание вопросов для сбора данных заказа
+    def handle_order_step(step):
+        if step == 1:
+            reply = "Как вас зовут?"
+        elif step == 2:
+            reply = "Выберите цветы для букета: классический романтик, весёлая ода или современная композиция?"
+        elif step == 3:
+            reply = "Введите информацию для оформления заказа (например, дополнительные детали: украшения, персонализированные записи)."
+        elif step == 4:
+            reply = "Введите дату доставки (гггг-мм-дд)."
+        elif step == 5:
+            reply = "Введите адрес доставки."
+        else:
+            reply = "Некорректный шаг."
+
+        session["messages"].append({"role": "assistant", "content": reply})
+
+    # Шаг 4: Сохранение данных заказа
+    def save_order_data(step, data):
+        if step == 1:
+            set_user_name(data)
+        elif step == 2:
+            session["flowers"] = data
+        elif step == 3:
+            session["details"] = data
+        elif step == 4:
+            session["delivery_date"] = data
+        elif step == 5:
+            session["delivery_address"] = data
+
+    # Шаг 5: Создание заказа и отправка в Telegram
+    def create_order():
+        order_data = {
+            "user_name": session.get("user_name"),
+            "flowers": session.get("flowers"),
+            "details": session.get("details"),
+            "delivery_date": session.get("delivery_date"),
+            "delivery_address": session.get("delivery_address")
+        }
+        send_to_telegram(order_data)  # Ваша функция для отправки заказа в Telegram
+        reply = "Заказ успешно оформлен!"
+        session["messages"].append({"role": "assistant", "content": reply})
+        session.pop("completed", None)
+
+    # Основная логика обработчика чата
+    if not get_user_name():
+        set_user_name(user_input)
+        handle_order_step(1)  # Начать с первого шага
     else:
-        reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
+        if user_input.isdigit() and int(user_input) in range(1, 6):
+            step = int(user_input)
+            handle_order_step(step)
+        elif session.get("order_step"):
+            step = session["order_step"]
+            save_order_data(step, user_input)
+            session["order_step"] += 1
+            if step == 5:
+                create_order()
+            else:
+                handle_order_step(session["order_step"])
+        else:
+            provide_order_status_or_new_order()
 
-    # Загружаем системный промт из файла
-    system_prompt = load_system_prompt()
-    if not system_prompt:
-        return jsonify({"error": "Не удалось загрузить системный промт"}), 500
-
-    session["messages"].insert(0, {"role": "system", "content": system_prompt})
-
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "llama3.1:8b",
-        "messages": session["messages"],
-        "max_tokens": 500,
-        "temperature": 0.7
-    }
-
-    try:
-        response = requests.post(URL, json=payload, headers=headers)
-        response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
-
-    reply = response.json()["choices"][0]["message"]["content"]
-    session["messages"].append({"role": "assistant", "content": reply})
-
-    # Если LLaMA сгенерировала заказ, отправляем его в Telegram
-    if "Новый заказ!" in reply:
-        send_to_telegram(reply)
-
-    return jsonify({"response": reply})
-
+    return jsonify({"message": "Принято"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
