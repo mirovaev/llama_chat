@@ -197,15 +197,19 @@ def send_to_telegram(message):
     except requests.exceptions.RequestException as e:
         print(f"Error sending message: {e}")
 
-def load_system_prompt():
-    try:
-        with open("system_prompt.txt", "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception as e:
-        logging.error(f"Ошибка при загрузке системного промта: {e}")
-        return None
+# def load_system_prompt():
+#     try:
+#         with open("system_prompt.txt", "r", encoding="utf-8") as f:
+#             return f.read()
+#     except Exception as e:
+#         logging.error(f"Ошибка при загрузке системного промта: {e}")
+#         return None
 
-# Обработчик чата
+# Читаем системный промт из файла
+def read_system_prompt():
+    with open("system_prompt.txt", "r", encoding="utf-8") as file:
+        return file.read().strip()  # Убираем лишние пробелы и символы новой строки
+
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message")
@@ -213,8 +217,9 @@ def chat():
 
     # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
     if "messages" not in session:
+        system_prompt = read_system_prompt()  # Читаем системный промт из файла
         session["messages"] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "assistant", "content": ASSISTANT_GREETING}
         ]
     session["messages"].append({"role": "user", "content": user_input})
