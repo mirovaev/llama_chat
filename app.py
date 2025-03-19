@@ -204,8 +204,21 @@ def load_system_prompt():
 # Обработчик чата
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_input = request.json.get("message")
-    logger.debug(f"Получено сообщение от пользователя: {user_input}")
+    # user_input = request.json.get("message")
+    # logger.debug(f"Получено сообщение от пользователя: {user_input}")
+    data = request.get_json()
+
+    if not data or "message" not in data:
+        return jsonify({"error": "Некорректный JSON"}), 400
+
+    user_input = data["message"].strip()
+    if not user_input:
+        return jsonify({"error": "Пустой запрос"}), 400
+
+    # Инициализация сессии, если её нет
+    if "messages" not in session:
+        session["messages"] = [{"role": "system",
+                                "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
 
     # Инициализация списка сообщений, если он еще не создан
     if "messages" not in session:
