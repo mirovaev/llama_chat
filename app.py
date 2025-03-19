@@ -229,12 +229,12 @@ def chat():
             else:
                 return jsonify({"response": "Пожалуйста, введите своё имя одним словом, без цифр и символов."})
 
-        # Если имя ещё не спрашивали, задаём вопрос
-        session["awaiting_name"] = True
-        return jsonify({"response": "Как вас зовут?"})
-
-    # Если пользователь уже представился
-    reply = f"Привет, {session['user_name']}! Чем могу помочь?"
+    #     # Если имя ещё не спрашивали, задаём вопрос
+    #     session["awaiting_name"] = True
+    #     return jsonify({"response": "Как вас зовут?"})
+    #
+    # # Если пользователь уже представился
+    # reply = f"Привет, {session['user_name']}! Чем могу помочь?"
 
     # Отправляем запрос к API нейросети
     headers = {
