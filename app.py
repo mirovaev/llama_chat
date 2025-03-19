@@ -116,7 +116,8 @@ def login():
         session.modified = True  # Принудительное сохранение сессии
 
         # Сохраняем сессию в Redis по пользователю
-        redis_client.set(f"user:{username}:session", session.sid)  # Привязка сессии к пользователю
+        # redis_client.set(f"user:{username}:session", session.sid)  # Привязка сессии к пользователю
+        redis_client.set(f"session:{session.sid}", json.dumps(session))
 
         # Теперь корректно сохраняем список сообщений в Redis
         redis_client.set(f"user:{session['user']}:messages", json.dumps(session.get("messages", [])))
