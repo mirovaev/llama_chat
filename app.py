@@ -214,25 +214,29 @@ def chat():
     if not user_input:
         return jsonify({"error": "Пустой запрос"}), 400
 
-    # Проверка, завершена ли сессия заказа
+    # Проверяем, есть ли активный заказ
     if session.get("completed"):
-        return jsonify({"response": "Спасибо за заказ! Если вам нужно что-то ещё, просто напишите мне"})
+        return jsonify({"response": "Спасибо за заказ! Если вам нужно что-то ещё, просто напишите мне."})
 
-    # Если имя ещё не сохранено — сохраняем
+    # Если имя ещё не сохранено
     if "user_name" not in session:
-        session["user_name"] = user_input
-        return jsonify({"response": f"Приятно познакомиться, {user_input}! Чем могу помочь?"})
+        # Если бот уже спрашивал имя, считаем следующий ответ именем
+        if session.get("awaiting_name"):
+            if re.fullmatch(r"[А-ЯЁA-Z][а-яёa-z]+", user_input):  # Проверяем, что это похоже на имя
+                session["user_name"] = user_input
+                del session["awaiting_name"]  # Убираем флаг ожидания имени
+                return jsonify({"response": f"Приятно познакомиться, {user_input}! Чем могу помочь?"})
+            else:
+                return jsonify({"response": "Пожалуйста, введите своё имя одним словом, без цифр и символов."})
+
+        # Если имя ещё не спрашивали, задаём вопрос
+        session["awaiting_name"] = True
+        return jsonify({"response": "Как вас зовут?"})
 
     # Если пользователь уже представился
     reply = f"Привет, {session['user_name']}! Чем могу помочь?"
 
-    # Загружаем системный промт из файла
-    system_prompt = load_system_prompt()
-    if not system_prompt:
-        return jsonify({"error": "Не удалось загрузить системный промт"}), 500
-
-    session["messages"].insert(0, {"role": "system", "content": system_prompt})
-
+    # Отправляем запрос к API нейросети
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -247,14 +251,13 @@ def chat():
     try:
         response = requests.post(URL, json=payload, headers=headers)
         response.raise_for_status()
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
 
     reply = response.json()["choices"][0]["message"]["content"]
     session["messages"].append({"role": "assistant", "content": reply})
 
     return jsonify({"response": reply})
-
 def generate_order_id():
     return str(uuid.uuid4())[:8]  # Берём первые 8 символов UUID
 
