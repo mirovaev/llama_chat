@@ -3,6 +3,7 @@ import re
 import redis
 import logging
 import json
+import uuid
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
@@ -148,18 +149,16 @@ def logout():
 @app.route("/status", methods=["GET"])
 def status():
     username = session.get('user')
-
     if not username:
         return jsonify({'error': 'Authorization required'}), 401
 
-    # Получаем идентификатор сессии для пользователя из Redis
-    session_id = redis_client.get(f"user:{username}:session")
+    order_data = redis_client.get(f"user:{username}:order")
 
-    if not session_id:
-        return jsonify({'error': 'Invalid session'}), 401
+    if order_data:
+        order_data = json.loads(order_data)
+        return jsonify({'message': f"Ваш заказ #{order_data['order_id']} - {order_data['status']}."})
 
-    return jsonify({'message': f'Hello, {username}'})
-
+    return jsonify({'message': 'У вас пока нет активных заказов.'})
 
 @app.route("/")
 def index():
@@ -261,15 +260,25 @@ def chat():
     session["messages"].append({"role": "assistant", "content": reply})
 
     # Проверка подтверждения заказа
-    if any(re.search(rf"\b{phrase}\b", reply.lower()) for phrase in ["заказ подтвержден", "оформлен", "заказ принят", "доставим"]):
-        # Если заказ подтверждён, завершаем сессию
-        session["completed"] = True
-        send_to_telegram(f"🚀 Новый заказ!\n\n{reply}")
-        return jsonify({"response": "Ваш заказ подтверждён и будет доставлен."})
+    if any(re.search(rf"\b{phrase}\b", reply.lower()) for phrase in
+           ["заказ подтвержден", "оформлен", "заказ принят", "доставим"]):
+        order_id = generate_order_id()  # Генерация номера заказа
+        order_data = {
+            "order_id": order_id,
+            "status": "Ожидает доставки",
+            "details": reply
+        }
+        redis_client.set(f"user:{session['user']}:order", json.dumps(order_data))
+
+        send_to_telegram(f"🚀 Новый заказ #{order_id}!\n\n{reply}")
+
+        return jsonify({"response": f"Ваш заказ подтверждён! Номер заказа: {order_id}"})
 
     # Если бот ещё не завершил заказ, возвращаем ответ
     return jsonify({"response": reply})
 
+def generate_order_id():
+    return str(uuid.uuid4())[:8]  # Берём первые 8 символов UUID
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
