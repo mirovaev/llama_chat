@@ -11,6 +11,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Загружаем переменные из .env
 load_dotenv()
 
+print(os.getenv("REDIS_URL"))
+REDIS_URL = os.getenv("REDIS_URL")
+if not REDIS_URL:
+    print("REDIS_URL is not set!")
+else:
+    print(f"REDIS_URL is: {REDIS_URL}")
+
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -22,19 +30,16 @@ app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
-# app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
-app.config["SESSION_REDIS"] = os.getenv("REDIS_URL")
+app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 Session(app)
 
-# redis_client = redis.from_url(os.getenv("REDIS_URL"))
-redis_client = os.getenv("REDIS_URL")
+redis_client = redis.from_url(os.getenv("REDIS_URL"))
 API_KEY = os.getenv("API_KEY")
 URL = os.getenv("URL")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-
 
 def login_required(f):
     @wraps(f)
