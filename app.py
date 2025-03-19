@@ -22,14 +22,14 @@ app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "session:"
-app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
+# app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
+app.config["SESSION_REDIS"] = os.getenv("REDIS_URL")
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 Session(app)
 
-redis_client = redis.from_url(os.getenv("REDIS_URL"))
-
-# Используем их в коде
+# redis_client = redis.from_url(os.getenv("REDIS_URL"))
+redis_client = os.getenv("REDIS_URL")
 API_KEY = os.getenv("API_KEY")
 URL = os.getenv("URL")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
