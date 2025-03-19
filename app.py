@@ -1,5 +1,4 @@
 import os
-import re
 import redis
 import logging
 import json
@@ -10,7 +9,9 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
@@ -141,15 +142,28 @@ def logout():
 def status():
     username = session.get('user')
     if not username:
+
+        logger.error("Authorization required")
         return jsonify({'error': 'Authorization required'}), 401
 
     order_data = redis_client.get(f"user:{username}:order")
+    if order_data is None:
+        logger.info(f"No active orders for user {username}")
+        return jsonify({'message': 'У вас пока нет активных заказов.'})
 
-    if order_data:
+    try:
         order_data = json.loads(order_data)
-        return jsonify({'message': f"Ваш заказ #{order_data['order_id']} - {order_data['status']}."})
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON from Redis for user {username}: {e}")
+        return jsonify({'error': 'Invalid data in Redis'}), 500
 
-    return jsonify({'message': 'У вас пока нет активных заказов.'})
+    if 'order_id' not in order_data or 'status' not in order_data:
+        logger.warning(f"Incomplete order data for user {username}: {order_data}")
+        return jsonify({'message': 'У вас пока нет активных заказов.'})
+
+    return jsonify({
+        'message': f"Ваш заказ #{order_data['order_id']} - {order_data['status']}."
+    })
 
 @app.route("/create_order", methods=["POST"])
 @login_required
