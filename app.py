@@ -2,6 +2,7 @@ import os
 import redis
 import logging
 import json
+import requests
 from config import SYSTEM_PROMPT, ASSISTANT_GREETING  # Импортируем константы
 from dotenv import load_dotenv
 from functools import wraps
@@ -178,10 +179,6 @@ def index():
 
     return render_template("index.html")
 
-
-import requests
-
-
 def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -223,7 +220,8 @@ def chat():
     if "messages" not in session:
         system_prompt = read_system_prompt()  # Читаем системный промт из файла
         session["messages"] = [
-            {"role": "system", "content": system_prompt},
+            # {"role": "system", "content": system_prompt},
+            {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
             {"role": "assistant", "content": ASSISTANT_GREETING}
         ]
     session["messages"].append({"role": "user", "content": user_input})
