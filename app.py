@@ -181,6 +181,7 @@ def index():
     if "messages" not in session:
         # Читаем системный промт из файла
         system_prompt = read_system_prompt()
+        logger.debug(f"Системный промт: {system_prompt}")  # Отладочный лог
         session["messages"] = [{"role": "system", "content": system_prompt}]
 
     return render_template("index.html")
@@ -214,8 +215,12 @@ def send_to_telegram(message):
 
 # Читаем системный промт из файла
 def read_system_prompt():
-    with open("system_prompt.txt", "r", encoding="utf-8") as file:
-        return file.read().strip()  # Убираем лишние пробелы и символы новой строки
+    try:
+        with open("system_prompt.txt", "r", encoding="utf-8") as file:
+            return file.read().strip()  # Убираем возможные пробелы в начале и конце
+    except FileNotFoundError:
+        logger.error("Файл с системным промтом не найден!")
+        return "Привет, я ИИ помощник по подбору цветов!"  # Значение по умолчанию
 
 @app.route("/chat", methods=["POST"])
 def chat():
