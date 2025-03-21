@@ -223,31 +223,90 @@ def read_system_prompt():
         return "Привет, я ИИ помощник по подбору цветов!"  # Значение по умолчанию
 
 @app.route("/chat", methods=["POST"])
+@login_required
+# def chat():
+#     user_input = request.json.get("message")
+#     logger.debug(f"Получено сообщение от пользователя: {user_input}")
+#
+#     # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
+#     # if "messages" not in session:
+#     #     system_prompt = read_system_prompt()  # Читаем системный промт из файла
+#     #     session["messages"] = [
+#     #         # {"role": "system", "content": system_prompt},
+#     #         {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
+#     #         {"role": "assistant", "content": ASSISTANT_GREETING}
+#     #     ]
+#     # session["messages"].append({"role": "user", "content": user_input})
+#     # logger.debug(f"Текущие сообщения: {session['messages']}")
+#     if "messages" not in session or not session["messages"]:
+#         system_prompt = read_system_prompt()  # Читаем системный промт из файла
+#         session["messages"] = [
+#             {"role": "system", "content": system_prompt}
+#         ]
+#
+#     session["messages"].append({"role": "user", "content": user_input})
+#     logger.debug(f"Текущие сообщения: {json.dumps(session['messages'], indent=2, ensure_ascii=False)}")
+#
+#
+#     # Отправляем запрос к API нейросети
+#     headers = {
+#         "Authorization": f"Bearer {API_KEY}",
+#         "Content-Type": "application/json"
+#     }
+#     payload = {
+#         "model": "llama3.1:8b",
+#         "messages": session["messages"],
+#         "max_tokens": 500,
+#         "temperature": 0.7
+#     }
+#     logger.debug(f"Отправка запроса в нейросеть: {payload}")
+#     response = requests.post(URL, json=payload, headers=headers)
+#     # Преобразуем текст в правильную кодировку, если нужно
+#     response.encoding = 'utf-8'
+#
+#     if response.status_code == 200:
+#         assistant_reply = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+#
+#         # Декодируем ответ, если он закодирован в неправильной кодировке
+#         if isinstance(assistant_reply, bytes):
+#             assistant_reply = assistant_reply.decode("utf-8", errors="ignore")
+#
+#         # Сохраняем ответ нейросети в сессии
+#         session["messages"].append({"role": "assistant", "content": assistant_reply})
+#         session.modified = True  # Обновляем сессию
+#
+#         return {"reply": assistant_reply}
+
 def chat():
-    user_input = request.json.get("message")
-    logger.debug(f"Получено сообщение от пользователя: {user_input}")
+    data = request.get_json()
 
-    # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
-    # if "messages" not in session:
-    #     system_prompt = read_system_prompt()  # Читаем системный промт из файла
-    #     session["messages"] = [
-    #         # {"role": "system", "content": system_prompt},
-    #         {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
-    #         {"role": "assistant", "content": ASSISTANT_GREETING}
-    #     ]
-    # session["messages"].append({"role": "user", "content": user_input})
-    # logger.debug(f"Текущие сообщения: {session['messages']}")
-    if "messages" not in session or not session["messages"]:
-        system_prompt = read_system_prompt()  # Читаем системный промт из файла
-        session["messages"] = [
-            {"role": "system", "content": system_prompt}
-        ]
+    if not data or "message" not in data:
+        return jsonify({"error": "Некорректный JSON"}), 400
 
+    user_input = data["message"].strip()
+    if not user_input:
+        return jsonify({"error": "Пустой запрос"}), 400
+
+    # Инициализация сессии, если её нет
+    if "messages" not in session:
+        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
+
+    # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
-    logger.debug(f"Текущие сообщения: {json.dumps(session['messages'], indent=2, ensure_ascii=False)}")
 
+    # Проверка, есть ли имя пользователя
+    if "user_name" not in session:
+        reply = "Как вас зовут?"  # Спрашиваем имя, если его нет в сессии
+    else:
+        reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
 
-    # Отправляем запрос к API нейросети
+    # Загружаем системный промт из файла
+    system_prompt = read_system_prompt()
+    if not system_prompt:
+        return jsonify({"error": "Не удалось загрузить системный промт"}), 500
+
+    session["messages"].insert(0, {"role": "system", "content": system_prompt})
+
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -255,26 +314,25 @@ def chat():
     payload = {
         "model": "llama3.1:8b",
         "messages": session["messages"],
-        "max_tokens": 500,
+        "max_tokens": 200,
         "temperature": 0.7
     }
-    logger.debug(f"Отправка запроса в нейросеть: {payload}")
-    response = requests.post(URL, json=payload, headers=headers)
-    # Преобразуем текст в правильную кодировку, если нужно
-    response.encoding = 'utf-8'
 
-    if response.status_code == 200:
-        assistant_reply = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+    try:
+        response = requests.post(URL, json=payload, headers=headers)
+        response.raise_for_status()  # Генерирует исключение для 4xx и 5xx ошибок
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Ошибка при взаимодействии с API"}), 500
 
-        # Декодируем ответ, если он закодирован в неправильной кодировке
-        if isinstance(assistant_reply, bytes):
-            assistant_reply = assistant_reply.decode("utf-8", errors="ignore")
+    reply = response.json()["choices"][0]["message"]["content"]
+    session["messages"].append({"role": "assistant", "content": reply})
 
-        # Сохраняем ответ нейросети в сессии
-        session["messages"].append({"role": "assistant", "content": assistant_reply})
-        session.modified = True  # Обновляем сессию
+    # Если сгенерировала заказ, отправляем его в Telegram
+    if "Новый заказ!" in reply:
+        send_to_telegram(reply)
 
-        return {"reply": assistant_reply}
+    return jsonify({"response": reply})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
