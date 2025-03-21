@@ -205,15 +205,7 @@ def send_to_telegram(message):
     except requests.exceptions.RequestException as e:
         print(f"Error sending message: {e}")
 
-# def load_system_prompt():
-#     try:
-#         with open("system_prompt.txt", "r", encoding="utf-8") as f:
-#             return f.read()
-#     except Exception as e:
-#         logging.error(f"Ошибка при загрузке системного промта: {e}")
-#         return None
 
-# Читаем системный промт из файла
 def read_system_prompt():
     try:
         with open("system_prompt.txt", "r", encoding="utf-8") as file:
@@ -224,59 +216,6 @@ def read_system_prompt():
 
 @app.route("/chat", methods=["POST"])
 @login_required
-# def chat():
-#     user_input = request.json.get("message")
-#     logger.debug(f"Получено сообщение от пользователя: {user_input}")
-#
-#     # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
-#     # if "messages" not in session:
-#     #     system_prompt = read_system_prompt()  # Читаем системный промт из файла
-#     #     session["messages"] = [
-#     #         # {"role": "system", "content": system_prompt},
-#     #         {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
-#     #         {"role": "assistant", "content": ASSISTANT_GREETING}
-#     #     ]
-#     # session["messages"].append({"role": "user", "content": user_input})
-#     # logger.debug(f"Текущие сообщения: {session['messages']}")
-#     if "messages" not in session or not session["messages"]:
-#         system_prompt = read_system_prompt()  # Читаем системный промт из файла
-#         session["messages"] = [
-#             {"role": "system", "content": system_prompt}
-#         ]
-#
-#     session["messages"].append({"role": "user", "content": user_input})
-#     logger.debug(f"Текущие сообщения: {json.dumps(session['messages'], indent=2, ensure_ascii=False)}")
-#
-#
-#     # Отправляем запрос к API нейросети
-#     headers = {
-#         "Authorization": f"Bearer {API_KEY}",
-#         "Content-Type": "application/json"
-#     }
-#     payload = {
-#         "model": "llama3.1:8b",
-#         "messages": session["messages"],
-#         "max_tokens": 500,
-#         "temperature": 0.7
-#     }
-#     logger.debug(f"Отправка запроса в нейросеть: {payload}")
-#     response = requests.post(URL, json=payload, headers=headers)
-#     # Преобразуем текст в правильную кодировку, если нужно
-#     response.encoding = 'utf-8'
-#
-#     if response.status_code == 200:
-#         assistant_reply = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-#
-#         # Декодируем ответ, если он закодирован в неправильной кодировке
-#         if isinstance(assistant_reply, bytes):
-#             assistant_reply = assistant_reply.decode("utf-8", errors="ignore")
-#
-#         # Сохраняем ответ нейросети в сессии
-#         session["messages"].append({"role": "assistant", "content": assistant_reply})
-#         session.modified = True  # Обновляем сессию
-#
-#         return {"reply": assistant_reply}
-
 def chat():
     data = request.get_json()
 
@@ -289,7 +228,8 @@ def chat():
 
     # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
     if "messages" not in session:
-        system_prompt = read_system_prompt()  # Читаем системный промт из файла
+        system_prompt = read_system_prompt()  # Читаем системный промт из
+        ASSISTANT_GREETING = "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"
         session["messages"] = [
             {"role": "system", "content": system_prompt},
             # {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
@@ -300,12 +240,6 @@ def chat():
 
     # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
-
-    # # Проверка, есть ли имя пользователя
-    # if "user_name" not in session:
-    #     reply = "Как вас зовут?"  # Спрашиваем имя, если его нет в сессии
-    # else:
-    #     reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -327,8 +261,8 @@ def chat():
     reply = response.json()["choices"][0]["message"]["content"]
     session["messages"].append({"role": "assistant", "content": reply})
 
-    # Если сгенерировала заказ, отправляем его в Telegram
-    if "Новый заказ!" in reply:
+    # Если сгенерировала заказ или подтвердила его, отправляем уведомление в Telegram
+    if "Новый заказ!" in reply or "Заказ подтвержден!" in reply:
         send_to_telegram(reply)
 
     return jsonify({"response": reply})
