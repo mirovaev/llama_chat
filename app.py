@@ -179,7 +179,9 @@ def index():
 
     # Если пользователь залогинен, проверяем, есть ли история сообщений
     if "messages" not in session:
-        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент."}]
+        # Читаем системный промт из файла
+        system_prompt = read_system_prompt()
+        session["messages"] = [{"role": "system", "content": system_prompt}]
 
     return render_template("index.html")
 
