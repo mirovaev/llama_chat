@@ -221,15 +221,23 @@ def chat():
     logger.debug(f"Получено сообщение от пользователя: {user_input}")
 
     # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
-    if "messages" not in session:
+    # if "messages" not in session:
+    #     system_prompt = read_system_prompt()  # Читаем системный промт из файла
+    #     session["messages"] = [
+    #         # {"role": "system", "content": system_prompt},
+    #         {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
+    #         {"role": "assistant", "content": ASSISTANT_GREETING}
+    #     ]
+    # session["messages"].append({"role": "user", "content": user_input})
+    # logger.debug(f"Текущие сообщения: {session['messages']}")
+    if "messages" not in session or not session["messages"]:
         system_prompt = read_system_prompt()  # Читаем системный промт из файла
         session["messages"] = [
-            # {"role": "system", "content": system_prompt},
-            {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
-            {"role": "assistant", "content": ASSISTANT_GREETING}
+            {"role": "system", "content": system_prompt}
         ]
+
     session["messages"].append({"role": "user", "content": user_input})
-    logger.debug(f"Текущие сообщения: {session['messages']}")
+    logger.debug(f"Текущие сообщения: {json.dumps(session['messages'], indent=2, ensure_ascii=False)}")
 
 
     # Отправляем запрос к API нейросети
