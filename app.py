@@ -260,20 +260,21 @@ def chat():
     }
     logger.debug(f"Отправка запроса в нейросеть: {payload}")
     response = requests.post(URL, json=payload, headers=headers)
+    # Преобразуем текст в правильную кодировку, если нужно
+    response.encoding = 'utf-8'
 
     if response.status_code == 200:
         assistant_reply = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
 
-        # Преобразуем Unicode в текст
-        assistant_reply = bytes(assistant_reply, 'utf-8').decode('unicode_escape')
+        # Декодируем ответ, если он закодирован в неправильной кодировке
+        if isinstance(assistant_reply, bytes):
+            assistant_reply = assistant_reply.decode("utf-8", errors="ignore")
 
         # Сохраняем ответ нейросети в сессии
         session["messages"].append({"role": "assistant", "content": assistant_reply})
         session.modified = True  # Обновляем сессию
 
         return {"reply": assistant_reply}
-    else:
-        return {"error": "Ошибка при запросе к нейросети"}, 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
