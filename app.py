@@ -297,9 +297,9 @@ def chat():
         ]
         session["messages"].append({"role": "user", "content": user_input})
     logger.debug(f"Текущие сообщения: {session['messages']}")
-    #
-    # # Добавление сообщения пользователя
-    # session["messages"].append({"role": "user", "content": user_input})
+
+    # Добавление сообщения пользователя
+    session["messages"].append({"role": "user", "content": user_input})
 
     # # Проверка, есть ли имя пользователя
     # if "user_name" not in session:
