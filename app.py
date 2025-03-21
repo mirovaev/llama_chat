@@ -287,9 +287,23 @@ def chat():
     if not user_input:
         return jsonify({"error": "Пустой запрос"}), 400
 
-    # Инициализация сессии, если её нет
+    # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
     if "messages" not in session:
-        session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
+        system_prompt = read_system_prompt()  # Читаем системный промт из файла
+        session["messages"] = [
+            # {"role": "system", "content": system_prompt},
+            {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
+            {"role": "assistant", "content": ASSISTANT_GREETING}
+        ]
+        session["messages"].append({"role": "user", "content": user_input})
+    logger.debug(f"Текущие сообщения: {session['messages']}")
+    # if "messages" not in session or not session["messages"]:
+    #         system_prompt = read_system_prompt()  # Читаем системный промт из файла
+    #         session["messages"] = [
+    #             {"role": "system", "content": system_prompt}
+    #         ]
+    # if "messages" not in session:
+    #     session["messages"] = [{"role": "system", "content": "Ты — полезный AI-ассистент и виртуальный помощник интернет-магазина цветов. Твоя цель — быстро и чётко помогать с выбором букета и оформлением заказа."}]
 
     # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
@@ -300,12 +314,12 @@ def chat():
     else:
         reply = f"Привет, {session['user_name']}! Чем могу помочь?"  # Обращаемся по имени
 
-    # Загружаем системный промт из файла
-    system_prompt = read_system_prompt()
-    if not system_prompt:
-        return jsonify({"error": "Не удалось загрузить системный промт"}), 500
-
-    session["messages"].insert(0, {"role": "system", "content": system_prompt})
+    # # Загружаем системный промт из файла
+    # system_prompt = read_system_prompt()
+    # if not system_prompt:
+    #     return jsonify({"error": "Не удалось загрузить системный промт"}), 500
+    #
+    # session["messages"].insert(0, {"role": "system", "content": system_prompt})
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
