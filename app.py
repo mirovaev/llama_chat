@@ -257,6 +257,9 @@ def chat():
     if response.status_code == 200:
         assistant_reply = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
 
+        # Преобразуем Unicode в текст
+        assistant_reply = bytes(assistant_reply, 'utf-8').decode('unicode_escape')
+
         # Сохраняем ответ нейросети в сессии
         session["messages"].append({"role": "assistant", "content": assistant_reply})
         session.modified = True  # Обновляем сессию
