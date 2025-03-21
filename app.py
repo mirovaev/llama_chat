@@ -42,6 +42,10 @@ URL = os.getenv("URL")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+if not API_KEY or not URL:
+    logger.error("API_KEY или URL не загружены! Проверь переменные окружения.")
+    raise ValueError("Отсутствуют необходимые переменные окружения")
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -227,6 +231,7 @@ def chat():
     session["messages"].append({"role": "user", "content": user_input})
     logger.debug(f"Текущие сообщения: {session['messages']}")
 
+
     # Отправляем запрос к API нейросети
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -238,7 +243,7 @@ def chat():
         "max_tokens": 500,
         "temperature": 0.7
     }
-
+    logger.debug(f"Отправка запроса в нейросеть: {payload}")
     response = requests.post(URL, json=payload, headers=headers)
 
     if response.status_code == 200:
