@@ -9,6 +9,7 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
+
 # Загружаем переменные из .env
 load_dotenv()
 
@@ -229,11 +230,13 @@ def chat():
     # Инициализация списка сообщений, если он еще не создан. тут должен быть систем промт
     if "messages" not in session:
         system_prompt = read_system_prompt()  # Читаем системный промт из
-        ASSISTANT_GREETING = "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"
+        # ASSISTANT_GREETING = "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"
         session["messages"] = [
-            {"role": "system", "content": system_prompt},
-            # {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
-            {"role": "assistant", "content": ASSISTANT_GREETING}
+
+             {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
+            {"role": "user", "content": user_input},
+            {"role": "assistant", "content": system_prompt},
+            # {"role": "system", "content": system_prompt},
         ]
         session["messages"].append({"role": "user", "content": user_input})
     logger.debug(f"Текущие сообщения: {session['messages']}")
