@@ -173,6 +173,20 @@ def status():
     return jsonify({'message': f'Hello, {username}'})
 
 
+# @app.route("/")
+# def index():
+#     if "user" not in session:  # Проверяем, есть ли пользователь в сессии
+#         return redirect(url_for("login"))  # Если нет, отправляем на страницу логина
+#
+#     # Если пользователь залогинен, проверяем, есть ли история сообщений
+#     if "messages" not in session:
+#         # Читаем системный промт из файла
+#         system_prompt = read_system_prompt()
+#         logger.debug(f"Системный промт: {system_prompt}")  # Отладочный лог
+#         session["messages"] = [{"role": "system", "content": system_prompt}]
+#
+#     return render_template("index.html")
+
 @app.route("/")
 def index():
     if "user" not in session:  # Проверяем, есть ли пользователь в сессии
@@ -180,10 +194,8 @@ def index():
 
     # Если пользователь залогинен, проверяем, есть ли история сообщений
     if "messages" not in session:
-        # Читаем системный промт из файла
-        system_prompt = read_system_prompt()
-        logger.debug(f"Системный промт: {system_prompt}")  # Отладочный лог
-        session["messages"] = [{"role": "system", "content": system_prompt}]
+        # В случае отсутствия сообщений просто инициализируем пустой список сообщений
+        session["messages"] = []
 
     return render_template("index.html")
 
@@ -208,12 +220,10 @@ def send_to_telegram(message):
 
 
 def read_system_prompt():
-    try:
-        with open("system_prompt.txt", "r", encoding="utf-8") as file:
-            return file.read().strip()  # Убираем возможные пробелы в начале и конце
-    except FileNotFoundError:
-        logger.error("Файл с системным промтом не найден!")
-        return "Привет, я ИИ помощник по подбору цветов!"  # Значение по умолчанию
+
+    with open("system_prompt.txt", "r", encoding="utf-8") as file:
+        return file.read().strip()  # Убираем возможные пробелы в начале и конце
+
 
 @app.route("/init_chat", methods=["GET"])
 @login_required
