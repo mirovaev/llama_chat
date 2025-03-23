@@ -219,10 +219,8 @@ def read_system_prompt():
 @login_required
 def init_chat():
     if "messages" not in session:
-        session["messages"] = [
-            {"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
-        return jsonify({"response": session["messages"][-1]["content"]})
-    return jsonify({"response": "Чат уже инициализирован"})
+        session["messages"] = [{"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
+    return jsonify({"response": session["messages"][-1]["content"]})
 
 
 @app.route("/chat", methods=["POST"])
@@ -250,9 +248,9 @@ def chat():
     #     ]
     #     session["messages"].append({"role": "user", "content": user_input})
 
-    # Если сессия не содержит сообщений, добавляем приветственное сообщение от бота
-    if "messages" not in session:
-        session["messages"] = [{"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
+    # # Если сессия не содержит сообщений, добавляем приветственное сообщение от бота
+    # if "messages" not in session:
+    #     session["messages"] = [{"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
 
     # Если в сессии только приветственное сообщение, добавляем системный промт
     if len(session["messages"]) == 1:  # Только приветствие
