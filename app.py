@@ -233,7 +233,7 @@ def chat():
         # ASSISTANT_GREETING = "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"
         session["messages"] = [
 
-             {"role": "system", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
+             {"role": "assistant", "content": "ПРивет, я ИИ помощник по подбору цветов, чем могу быть полезен?"},
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": system_prompt},
             # {"role": "system", "content": system_prompt},
