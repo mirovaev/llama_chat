@@ -252,15 +252,32 @@ def chat():
     # if "messages" not in session:
     #     session["messages"] = [{"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
 
-    # Если в сессии только приветственное сообщение, добавляем системный промт
-    if len(session["messages"]) == 1:  # Только приветствие
+    # # Если в сессии только приветственное сообщение, добавляем системный промт
+    # if len(session["messages"]) == 1:  # Только приветствие
+    #     system_prompt = read_system_prompt()
+    #     session["messages"].append({"role": "assistant", "content": system_prompt},
+    #                                session["messages"].append({"role": "user", "content": user_input})
+    #                                )
+    #
+    # logger.debug(f"Текущие сообщения: {session['messages']}")
+
+    # Если сессия не содержит сообщений, добавляем приветственное сообщение от ассистента
+    if "messages" not in session:
+        session["messages"] = [
+            {"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
+
+        # Добавление сообщения пользователя
+    session["messages"].append({"role": "user", "content": user_input})
+
+    # Если после приветствия поступил первый запрос, добавляем системный промт
+    if len(session["messages"]) == 2:  # Приветствие + сообщение пользователя
         system_prompt = read_system_prompt()
         session["messages"].append({"role": "assistant", "content": system_prompt})
 
     logger.debug(f"Текущие сообщения: {session['messages']}")
 
-    # Добавление сообщения пользователя
-    session["messages"].append({"role": "user", "content": user_input})
+    # # Добавление сообщения пользователя
+    # session["messages"].append({"role": "user", "content": user_input})
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
