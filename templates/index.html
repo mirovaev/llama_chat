@@ -19,63 +19,89 @@
         <p>Пожалуйста, <a href="{{ url_for('login') }}">войдите</a> для использования чата.</p>
     {% endif %}
 
-    <script>
-        // Функция для обработки нажатия клавиши Enter в поле ввода
-        function onKeyDown(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
+<script>
+    // Функция для обработки нажатия клавиши Enter в поле ввода
+    function onKeyDown(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    // Функция для добавления сообщения в чат
+    function addMessage(sender, message) {
+        let chatBox = document.getElementById("chat-box");
+        chatBox.innerHTML += `<p><strong>${sender}:</strong> ${message}</p>`;
+        chatBox.scrollTop = chatBox.scrollHeight; // Автопрокрутка вниз
+    }
+
+    // Функция для отправки сообщения на сервер и получения ответа
+    async function sendMessage() {
+        let inputField = document.getElementById("user-input");
+        let message = inputField.value.trim();
+        if (!message) return;
+
+        addMessage("Вы", message);
+
+        let response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: message })
+        });
+
+        let data = await response.json();
+        if (data.response) {
+            addMessage("Бот", data.response);
+        } else {
+            addMessage("Ошибка", data.error || "Ошибка сервера");
         }
 
-        // Функция для добавления сообщения в чат
-        function addMessage(sender, message) {
-            let chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML += `<p><strong>${sender}:</strong> ${message}</p>`;
-            chatBox.scrollTop = chatBox.scrollHeight; // Автопрокрутка вниз
-        }
+        inputField.value = "";
+    }
 
-        // Функция для отправки сообщения на сервер и получения ответа
-        async function sendMessage() {
-            let inputField = document.getElementById("user-input");
-            let message = inputField.value.trim();
-            if (!message) return;
-
-            addMessage("Вы", message);
-
-            let response = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message })
+    // Проверяем статус пользователя и инициализируем чат
+    async function getStatusAndInitChat() {
+        try {
+            const statusResponse = await fetch('/status', {
+                method: 'GET',
+                credentials: 'include'
             });
 
-            let data = await response.json();
-            if (data.response) {
-                addMessage("Бот", data.response);
+            const statusData = await statusResponse.json();
+            console.log("Ответ сервера /status:", statusData);
+
+            if (statusResponse.status === 200) {
+                console.log(statusData.message);
+
+                // После успешной проверки сессии запрашиваем первое сообщение бота
+                await initChat();
             } else {
-                addMessage("Ошибка", data.error || "Ошибка сервера");
+                console.error(statusData.message);
             }
-
-            inputField.value = "";
+        } catch (error) {
+            console.error("Ошибка проверки статуса:", error);
         }
+    }
 
-        // Добавляем код для запроса состояния сессии
-        async function getStatus() {
-            const response = await fetch('/status', {
+    // Запрашиваем первое сообщение бота
+    async function initChat() {
+        try {
+            const response = await fetch('/init_chat', {
                 method: 'GET',
-                credentials: 'include'  // Включение cookies для передачи сессии
+                credentials: 'include'
             });
 
             const data = await response.json();
-            console.log("Ответ сервера /status:", data);
-            if (response.status === 200) {
-                console.log(data.message);  // Вывод сообщения о статусе сессии в консоль
-            } else {
-                console.error(data.message);  // Вывод ошибки в консоль
+            if (data.response) {
+                addMessage("Бот", data.response);
             }
+        } catch (error) {
+            console.error("Ошибка инициализации чата:", error);
         }
+    }
 
-        // Вызываем getStatus при загрузке страницы
-        window.onload = getStatus;
-    </script>
+    // Вызываем getStatusAndInitChat при загрузке страницы
+    window.onload = getStatusAndInitChat;
+</script>
+
 </body>
 </html>
