@@ -228,8 +228,12 @@ def read_system_prompt():
 @app.route("/init_chat", methods=["GET"])
 @login_required
 def init_chat():
-    if "messages" not in session:
-        session["messages"] = [{"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
+    # Проверяем, есть ли сообщения в сессии
+    if "messages" not in session or not session["messages"]:
+        # Если нет, создаем начальное сообщение
+        session["messages"] = [
+            {"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
+
     return jsonify({"response": session["messages"][-1]["content"]})
 
 
