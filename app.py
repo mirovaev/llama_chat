@@ -203,10 +203,9 @@ def read_system_prompt():
 def init_chat():
     # Проверяем, есть ли сообщения в сессии
     if "messages" not in session or not session["messages"]:
-        assistant_prompt = ASSISTANT_PROMT()
         # Если нет, создаем начальное сообщение
         session["messages"] = [
-            {"role": "assistant", "content": assistant_prompt}]
+            {"role": "assistant", "content": "Привет, я помощник цветочного фермера Кати и помогу тебе сделать заказ :)"}]
 
     return jsonify({"response": session["messages"][-1]["content"]})
 
