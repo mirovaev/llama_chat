@@ -1,9 +1,10 @@
 import os
+import re
 import redis
 import logging
 import json
 import requests
-from config import SYSTEM_PROMPT, ASSISTANT_GREETING  # Импортируем константы
+from config import ASSISTANT_PROMT  # Импортируем константы
 from dotenv import load_dotenv
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
@@ -12,14 +13,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # Загружаем переменные из .env
 load_dotenv()
-
-print(os.getenv("REDIS_URL"))
-REDIS_URL = os.getenv("REDIS_URL")
-if not REDIS_URL:
-    print("REDIS_URL is not set!")
-else:
-    print(f"REDIS_URL is: {REDIS_URL}")
-
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -98,7 +91,6 @@ def register():
 
     return jsonify({"message": "Пользователь зарегистрирован"})
 
-
 @app.route("/login_user", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -156,7 +148,6 @@ def logout():
     session.modified = True  # Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
 
-
 @app.route("/status", methods=["GET"])
 def status():
     username = session.get('user')
@@ -171,21 +162,6 @@ def status():
         return jsonify({'error': 'Invalid session'}), 401
 
     return jsonify({'message': f'Hello, {username}'})
-
-
-# @app.route("/")
-# def index():
-#     if "user" not in session:  # Проверяем, есть ли пользователь в сессии
-#         return redirect(url_for("login"))  # Если нет, отправляем на страницу логина
-#
-#     # Если пользователь залогинен, проверяем, есть ли история сообщений
-#     if "messages" not in session:
-#         # Читаем системный промт из файла
-#         system_prompt = read_system_prompt()
-#         logger.debug(f"Системный промт: {system_prompt}")  # Отладочный лог
-#         session["messages"] = [{"role": "system", "content": system_prompt}]
-#
-#     return render_template("index.html")
 
 @app.route("/")
 def index():
@@ -227,9 +203,10 @@ def read_system_prompt():
 def init_chat():
     # Проверяем, есть ли сообщения в сессии
     if "messages" not in session or not session["messages"]:
+        assistant_prompt = ASSISTANT_PROMT()
         # Если нет, создаем начальное сообщение
         session["messages"] = [
-            {"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
+            {"role": "assistant", "content": assistant_prompt}]
 
     return jsonify({"response": session["messages"][-1]["content"]})
 
@@ -245,12 +222,6 @@ def chat():
     user_input = data["message"].strip()
     if not user_input:
         return jsonify({"error": "Пустой запрос"}), 400
-
-    #
-    # # Если сессия не содержит сообщений, добавляем приветственное сообщение от ассистента
-    # if "messages" not in session:
-    #     session["messages"] = [
-    #         {"role": "assistant", "content": "Привет, я ИИ помощник по подбору цветов, чем могу быть полезен?"}]
 
         # Добавление сообщения пользователя
     session["messages"].append({"role": "user", "content": user_input})
@@ -285,12 +256,62 @@ def chat():
     reply = response.json()["choices"][0]["message"]["content"]
     session["messages"].append({"role": "assistant", "content": reply})
 
-    # Если сгенерировала заказ или подтвердила его, отправляем уведомление в Telegram
+    # # Если сгенерировала заказ или подтвердила его, отправляем уведомление в Telegram
+    # if "Новый заказ!" in reply or "Заказ подтвержден!" in reply:
+    #     send_to_telegram(reply)
+
+    # Если заказ подтверждён, собираем данные и отправляем в Telegram
     if "Новый заказ!" in reply or "Заказ подтвержден!" in reply:
-        send_to_telegram(reply)
+        order_details = extract_order_details(session["messages"])
+        send_to_telegram(order_details)
 
     return jsonify({"response": reply})
 
+def extract_order_details(messages):
+    """
+    Анализирует историю сообщений и извлекает детали заказа.
+    """
+    order_info = {
+        "Имя клиента": None,
+        "Букет": None,
+        "Дата доставки": None,
+        "Адрес": None
+    }
 
+    for msg in messages:
+        if msg["role"] == "assistant":
+            text = msg["content"]
+
+            # Поиск имени клиента
+            match = re.search(r"Ваши имена: (.+)", text)
+            if match:
+                order_info["Имя клиента"] = match.group(1)
+
+            # Поиск типа букета
+            match = re.search(r"Цветы: (.+)", text)
+            if match:
+                order_info["Букет"] = match.group(1)
+
+            # Поиск даты доставки
+            match = re.search(r"Дата доставки: (.+)", text)
+            if match:
+                order_info["Дата доставки"] = match.group(1)
+
+            # Поиск адреса
+            match = re.search(r"Адрес доставки: (.+)", text)
+            if match:
+                order_info["Адрес"] = match.group(1)
+
+    # Формируем сообщение для Telegram
+    telegram_message = (
+        f"📦 *Новый заказ!*\n\n"
+        f"👤 *Имя клиента:* {order_info['Имя клиента'] or 'Не указано'}\n"
+        f"💐 *Букет:* {order_info['Букет'] or 'Не указано'}\n"
+        f"📅 *Дата доставки:* {order_info['Дата доставки'] or 'Не указано'}\n"
+        f"📍 *Адрес доставки:* {order_info['Адрес'] or 'Не указано'}\n"
+        f"\nСпасибо за заказ! 🎉"
+    )
+
+    return telegram_message
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
