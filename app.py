@@ -4,7 +4,6 @@ import redis
 import logging
 import json
 import requests
-from config import ASSISTANT_PROMT  # Импортируем константы
 from dotenv import load_dotenv
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
@@ -205,7 +204,9 @@ def init_chat():
     if "messages" not in session or not session["messages"]:
         # Если нет, создаем начальное сообщение
         session["messages"] = [
-            {"role": "assistant", "content": "Привет, я помощник цветочного фермера Кати и помогу тебе сделать заказ :)"}]
+            {"role": "assistant", "content": "Привет, я помощник цветочного фермера Кати и помогу тебе сделать заказ."},
+            {"role": "assistant", "content": "Ты хочешь сделать новый заказ?"}
+        ]
 
     return jsonify({"response": session["messages"][-1]["content"]})
 
