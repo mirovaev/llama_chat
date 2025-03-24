@@ -204,7 +204,7 @@ def init_chat():
     if "messages" not in session or not session["messages"]:
         # Если нет, создаем начальное сообщение
         session["messages"] = [
-            {"role": "assistant", "content": "Привет, я помощник цветочного фермера Кати и помогу тебе сделать заказ. Ты хочешь сделать новый заказ?"}]
+            {"role": "assistant", "content": "Привет, я помощник цветочного фермера и помогу тебе сделать заказ. Ты хочешь сделать новый заказ?"}]
 
     return jsonify({"response": session["messages"][-1]["content"]})
 
