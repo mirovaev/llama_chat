@@ -277,30 +277,32 @@ def extract_order_details(messages):
     for msg in messages:
         text = msg["content"]
 
-        # Ищем всю строку с заказом
-        if "Вот ваш заказ:" in text:
-            match = re.search(r"на имя (\w+)", text)
-            if match:
-                order_info["Имя клиента"] = match.group(1)
+        match = re.search(r"на имя ([\w\s]+)", text)
+        if match:
+            order_info["Имя клиента"] = match.group(1).strip()
 
-            match = re.search(r"(?:букет|Букет) (.+?) 📆", text)
-            if match:
-                order_info["Букет"] = match.group(1).strip()
+        match = re.search(r"(?:букет|Букет) (.+?) 📆", text)
+        if match:
+            order_info["Букет"] = match.group(1).strip()
 
-            match = re.search(r"📆 (\d{2}\.\d{2})", text)
-            if match:
-                order_info["Дата доставки"] = match.group(1)
+        match = re.search(r"📆 (\d{2}\.\d{2})", text)
+        if match:
+            order_info["Дата доставки"] = match.group(1).strip()
 
-            match = re.search(r"🏡 (.+)", text)
-            if match:
-                order_info["Адрес"] = match.group(1).strip()
+        match = re.search(r"🏡 (.+?)$", text, re.MULTILINE)
+        if match:
+            order_info["Адрес"] = match.group(1).strip()
 
-            if "без записки" in text:
-                order_info["Записка"] = "Нет"
-            elif "записку" in text:
-                order_info["Записка"] = "Да, есть"
+        if "без записки" in text:
+            order_info["Записка"] = "Нет"
+        elif "записку" in text:
+            order_info["Записка"] = "Да, есть"
 
     print("Извлечённые данные заказа:", order_info)
+
+    # Если данных нет, не отправлять пустое сообщение
+    if not any(order_info.values()):
+        return None
 
     return (
         f"📦 *Новый заказ!*\n\n"
