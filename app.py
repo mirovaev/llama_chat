@@ -281,7 +281,7 @@ def extract_order_details(messages):
         if match:
             order_info["Имя клиента"] = match.group(1).strip()
 
-        match = re.search(r"(?:букет|Букет) (.+?) 📆", text)
+        match = re.search(r"на имя .*? 🌷 (.+?) 📆", text)
         if match:
             order_info["Букет"] = match.group(1).strip()
 
