@@ -239,7 +239,9 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "gemma2:27b",
+        # "model": "gemma2:27b",
+        "model": "qwen2.5: 14b",
+
         "messages": session["messages"],
         "max_tokens": 200,
         "temperature": 0.7
