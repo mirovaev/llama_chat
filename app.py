@@ -278,33 +278,32 @@ def extract_order_details(messages):
     }
 
     for msg in messages:
-        if msg["role"] == "assistant":
-            text = msg["content"]
+        text = msg["content"]  # Берём текст из каждого сообщения
 
-            # Поиск имени клиента
-            match = re.search(r"(?:Ваши имена|на имя): (.+)", text)
-            if match:
-                order_info["Имя клиента"] = match.group(1)
+        # Поиск имени клиента
+        match = re.search(r"(?:на имя|Имя|Клиент):\s*([\w\s]+)", text, re.IGNORECASE)
+        if match:
+            order_info["Имя клиента"] = match.group(1).strip()
 
-            # Поиск типа букета
-            match = re.search(r"(?:Цветы|букет): (.+)", text)
-            if match:
-                order_info["Букет"] = match.group(1)
+        # Поиск букета
+        match = re.search(r"(?:Букет|Цветы):\s*(.+)", text, re.IGNORECASE)
+        if match:
+            order_info["Букет"] = match.group(1).strip()
 
-            # Поиск даты доставки
-            match = re.search(r"(?:Дата|дата доставки): (.+)", text)
-            if match:
-                order_info["Дата доставки"] = match.group(1)
+        # Поиск даты доставки
+        match = re.search(r"(?:Дата|доставка):\s*(\d{1,2}\.\d{1,2})", text)
+        if match:
+            order_info["Дата доставки"] = match.group(1)
 
-            # Поиск адреса
-            match = re.search(r"(?:Доставка|адрес доставки): (.+)", text)
-            if match:
-                order_info["Адрес"] = match.group(1)
+        # Поиск адреса
+        match = re.search(r"(?:Адрес|Доставка|🏡):\s*(.+)", text, re.IGNORECASE)
+        if match:
+            order_info["Адрес"] = match.group(1).strip()
 
-            # Поиск адреса
-            match = re.search(r"(?:Записка|записка): (.+)", text)
-            if match:
-                order_info["Записка"] = match.group(1)
+        # Поиск записки
+        match = re.search(r"(?:Записка|💌):\s*\"?(.+?)\"?", text, re.IGNORECASE)
+        if match:
+            order_info["Записка"] = match.group(1).strip()
 
     # Формируем сообщение для Telegram
     telegram_message = (
@@ -313,10 +312,11 @@ def extract_order_details(messages):
         f"💐 *Букет:* {order_info['Букет'] or 'Не указано'}\n"
         f"📅 *Дата доставки:* {order_info['Дата доставки'] or 'Не указано'}\n"
         f"📍 *Адрес доставки:* {order_info['Адрес'] or 'Не указано'}\n"
-        f"📍 *Записка:* {order_info['Записка'] or 'Не указано'}\n"
+        f"💌 *Записка:* {order_info['Записка'] or 'Не указано'}\n"
         f"\nСпасибо за заказ! 🎉"
     )
 
     return telegram_message
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
