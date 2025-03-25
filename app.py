@@ -239,7 +239,7 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama3.1:8b",
+        "model": "deepseek-r1:32b",
         "messages": session["messages"],
         "max_tokens": 200,
         "temperature": 0.7
