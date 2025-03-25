@@ -266,9 +266,6 @@ def chat():
     return jsonify({"response": reply})
 
 def extract_order_details(messages):
-    """
-    Анализирует историю сообщений и извлекает детали заказа.
-    """
     order_info = {
         "Имя клиента": None,
         "Букет": None,
@@ -278,35 +275,34 @@ def extract_order_details(messages):
     }
 
     for msg in messages:
-        text = msg["content"]  # Берём текст из каждого сообщения
+        text = msg["content"]
 
-        # Поиск имени клиента
-        match = re.search(r"(?:на имя|Имя|Клиент):\s*([\w\s]+)", text, re.IGNORECASE)
-        if match:
-            order_info["Имя клиента"] = match.group(1).strip()
+        # Ищем всю строку с заказом
+        if "Вот ваш заказ:" in text:
+            match = re.search(r"на имя (\w+)", text)
+            if match:
+                order_info["Имя клиента"] = match.group(1)
 
-        # Поиск букета
-        match = re.search(r"(?:Букет|Цветы):\s*(.+)", text, re.IGNORECASE)
-        if match:
-            order_info["Букет"] = match.group(1).strip()
+            match = re.search(r"(?:букет|Букет) (.+?) 📆", text)
+            if match:
+                order_info["Букет"] = match.group(1).strip()
 
-        # Поиск даты доставки
-        match = re.search(r"(?:Дата|доставка):\s*(\d{1,2}\.\d{1,2})", text)
-        if match:
-            order_info["Дата доставки"] = match.group(1)
+            match = re.search(r"📆 (\d{2}\.\d{2})", text)
+            if match:
+                order_info["Дата доставки"] = match.group(1)
 
-        # Поиск адреса
-        match = re.search(r"(?:Адрес|Доставка|🏡):\s*(.+)", text, re.IGNORECASE)
-        if match:
-            order_info["Адрес"] = match.group(1).strip()
+            match = re.search(r"🏡 (.+)", text)
+            if match:
+                order_info["Адрес"] = match.group(1).strip()
 
-        # Поиск записки
-        match = re.search(r"(?:Записка|💌):\s*\"?(.+?)\"?", text, re.IGNORECASE)
-        if match:
-            order_info["Записка"] = match.group(1).strip()
+            if "без записки" in text:
+                order_info["Записка"] = "Нет"
+            elif "записку" in text:
+                order_info["Записка"] = "Да, есть"
 
-    # Формируем сообщение для Telegram
-    telegram_message = (
+    print("Извлечённые данные заказа:", order_info)
+
+    return (
         f"📦 *Новый заказ!*\n\n"
         f"👤 *Имя клиента:* {order_info['Имя клиента'] or 'Не указано'}\n"
         f"💐 *Букет:* {order_info['Букет'] or 'Не указано'}\n"
@@ -315,8 +311,6 @@ def extract_order_details(messages):
         f"💌 *Записка:* {order_info['Записка'] or 'Не указано'}\n"
         f"\nСпасибо за заказ! 🎉"
     )
-
-    return telegram_message
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5050)), debug=True)
