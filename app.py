@@ -1,43 +1,92 @@
 import os
 import re
-import redis
 import logging
-import json
 import requests
 from dotenv import load_dotenv
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_session import Session
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from models import User
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from models import db
 # Загружаем переменные из .env
 load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Конфигурация для PostgreSQL
 app = Flask(__name__)
+# Устанавливаем секретный ключ
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
+# Используем URL из переменных окружения, если он есть
+# DATABASE_URL = os.getenv("DATABASE_URL", "DATABASE_URL")
+#
+# # Настройки базы данных
+# app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# app.config['SESSION_TYPE'] = 'sqlalchemy'
+# Конфигурация базы данных в зависимости от окружения (локально или продакшн)
+if os.getenv("FLASK_ENV") == "production":
+    # Используем PostgreSQL на Railway
+    DATABASE_URL_RAILWAY = os.getenv("DATABASE_URL_RAILWAY", "DATABASE_URL_RAILWAY")
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL_RAILWAY # Локальная база данных # Строка подключения из переменной окружения на Railway
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db.init_app(app)  # Инициализируем SQLAlchemy с приложением
+    app.config['SESSION_TYPE'] = 'sqlalchemy'  # Настройка сессий для SQLAlchemy
+    app.config['SESSION_SQLALCHEMY'] = db  # Подключение сессий
+else:
+    # Используем PostgreSQL локально (например, для разработки)
+    DATABASE_URL = os.getenv("DATABASE_URL", "DATABASE_URL")
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL # Локальная база данных
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db.init_app(app)  # Инициализируем SQLAlchemy с приложением
+    app.config['SESSION_TYPE'] = 'sqlalchemy'  # Настройка сессий для SQLAlchemy
+    app.config['SESSION_SQLALCHEMY'] = db  # Подключение сессий
 
-# Настройки сессий с использованием Redis
-app.config["SESSION_TYPE"] = "redis"
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_USE_SIGNER"] = True
-app.config["SESSION_KEY_PREFIX"] = "session:"
-app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Инициализируем db с приложением с помощью db.init_app(app)
+# db.init_app(app)
 
+# Подключаем миграции
+migrate = Migrate(app, db)
+
+# Настроим сессии с SQLAlchemy
+# app.config['SESSION_SQLALCHEMY'] = db
 Session(app)
 
-redis_client = redis.from_url(os.getenv("REDIS_URL"))
+# Подключение к БД внутри контекста приложения
+def test_db_connection():
+    with app.app_context():
+        try:
+            engine = create_engine(DATABASE_URL)  # Определяем engine внутри функции
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                print(f"✅ Подключение к БД успешно: {result.fetchone()}")
+        except Exception as e:
+            print(f"❌ Ошибка подключения к БД: {e}")
+
+test_db_connection()
+# # Настройки сессий с использованием Redis
+# app.config["SESSION_TYPE"] = "redis"
+# app.config["SESSION_PERMANENT"] = False
+# app.config["SESSION_USE_SIGNER"] = True
+# app.config["SESSION_KEY_PREFIX"] = "session:"
+# app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
+# app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+
+
+# redis_client = redis.from_url(os.getenv("REDIS_URL"))
 API_KEY = os.getenv("API_KEY")
 URL = os.getenv("URL")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-if not API_KEY or not URL:
-    logger.error("API_KEY или URL не загружены! Проверь переменные окружения.")
-    raise ValueError("Отсутствуют необходимые переменные окружения")
 
 def login_required(f):
     @wraps(f)
@@ -62,44 +111,15 @@ def register_page():
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("register.html")  # Показываем страницу регистрации
 
-
-# Регистрация пользователя
-@app.route("/register_user", methods=["GET", "POST"])
+@app.route("/register_user", methods=["POST","GET"])
 def register():
+
     if request.method == "GET":
-        return redirect(url_for("register_page"))  # Перенаправление на форму регистрации
-
-    if not request.is_json:
-        return jsonify({"error": "Ожидался JSON"}), 400
-
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Некорректный JSON"}), 400
-
-    username = data.get("username")
-    password = data.get("password")
-
-    if not username or not password:
-        return jsonify({"error": "Введите логин и пароль"}), 400
-
-    if redis_client.hexists("users", username):
-        return jsonify({"error": "Пользователь уже существует"}), 400
-
-    hashed_password = generate_password_hash(password)
-    redis_client.hset("users", username, hashed_password)
-
-    return jsonify({"message": "Пользователь зарегистрирован"})
-
-@app.route("/login_user", methods=["GET", "POST"])
-def login():
-    if request.method == "GET":
-        return redirect(url_for("login_page"))  # Перенаправление на форму логина
+        return redirect(url_for('register_page'))
 
     try:
-        if not request.is_json:
-            return jsonify({"error": "Ожидался JSON"}), 400
-
         data = request.get_json()
+
         if not data:
             return jsonify({"error": "Некорректный JSON"}), 400
 
@@ -109,42 +129,115 @@ def login():
         if not username or not password:
             return jsonify({"error": "Введите логин и пароль"}), 400
 
-        stored_password = redis_client.hget("users", username)
+        if User.query.filter_by(username=username).first():
+            return jsonify({"error": "Пользователь уже существует"}), 400
 
-        if not stored_password:
-            return jsonify({"error": "Неверный логин или пароль"}), 401
+        hashed_password = generate_password_hash(password)
+        new_user = User(username=username, password_hash=hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
 
-        if not check_password_hash(stored_password.decode('utf-8'), password):
-            return jsonify({"error": "Неверный логин или пароль"}), 401
+        return jsonify({"message": "Пользователь зарегистрирован"})
 
-        session["user"] = username
-        session.modified = True  # Принудительное сохранение сессии
-
-        # Сохраняем сессию в Redis по пользователю
-        redis_client.set(f"user:{username}:session", session.sid)  # Привязка сессии к пользователю
-        # redis_client.set(f"session:{session.sid}", json.dumps(session))
-
-        # Теперь корректно сохраняем список сообщений в Redis
-        redis_client.set(f"user:{session['user']}:messages", json.dumps(session.get("messages", [])))
-
-        return jsonify({"message": "Вход выполнен"})
-
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка в SQL запросе при регистрации: {str(e)}")
+        return jsonify({"error": "Ошибка при работе с базой данных"}), 500
     except Exception as e:
+        logger.error(f"Неизвестная ошибка при регистрации: {str(e)}")
         return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
 
-# Выход пользователя
+@app.route("/login_user", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return redirect(url_for("login_page"))  # Перенаправление на форму логина
+
+    try:
+        # Проверяем, что запрос имеет заголовок Content-Type: application/json
+        if not request.is_json:
+            return jsonify({"error": "Ожидался JSON"}), 400
+
+        # Получаем данные из запроса
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"error": "Некорректный JSON"}), 400
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username or not password:
+            return jsonify({"error": "Введите логин и пароль"}), 400
+
+        # Ищем пользователя в базе данных
+        user = User.query.filter_by(username=username).first()
+
+        if not user or not check_password_hash(user.password_hash, password):
+            return jsonify({"error": "Неверный логин или пароль"}), 401
+
+        # Сохраняем пользователя в сессии
+        session["user"] = username
+        session.modified = True
+
+        return jsonify({"message": "Вход выполнен"})
+
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка в SQL запросе: {str(e)}")
+        return jsonify({"error": "Ошибка при работе с базой данных"}), 500
+    except Exception as e:
+        logger.error(f"Неизвестная ошибка: {str(e)}")
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+
+# def login():
+#     if request.method == "GET":
+#         return redirect(url_for("login_page"))  # Перенаправление на форму логина
+#
+#     try:
+#         if not request.is_json:
+#             return jsonify({"error": "Ожидался JSON"}), 400
+#
+#         data = request.get_json()
+#         if not data:
+#             return jsonify({"error": "Некорректный JSON"}), 400
+#
+#         username = data.get("username")
+#         password = data.get("password")
+#
+#         if not username or not password:
+#             return jsonify({"error": "Введите логин и пароль"}), 400
+#
+#         # Ищем пользователя в базе данных
+#         user = User.query.filter_by(username=username).first()
+#
+#         if not user or not check_password_hash(user.password_hash, password):
+#             return jsonify({"error": "Неверный логин или пароль"}), 401
+#
+#         session["user"] = username
+#         session.modified = True  # Принудительное сохранение сессии
+
+        # # Создаем сессию в базе данных (если её нет)
+        # existing_session = Session.query.filter_by(user_id=user.id).first()
+        # if existing_session:
+        #     existing_session.session_id = session.sid
+        #     existing_session.messages = session.get("messages", [])
+        # else:
+        #     new_session = Session(session_id=session.sid, user_id=user.id, messages=session.get("messages", []))
+        #     db.session.add(new_session)
+        #
+        # db.session.commit()
+
+
 @app.route("/logout", methods=["POST"])
 def logout():
     username = session.get('user')
 
     if username:
-        # Удаляем сессионные данные для пользователя из Redis
-        redis_client.delete(f"user:{username}:session")
-        redis_client.delete(f"user:{username}:messages")
+        # Ищем сессию в базе данных и удаляем её
+        user = User.query.filter_by(username=username).first()
+        if user:
+            db.session.delete(user)
 
     session.clear()
-    session.modified = True  # Принудительное сохранение сессии
     return jsonify({"message": "Выход выполнен"})
 
 @app.route("/status", methods=["GET"])
@@ -153,12 +246,6 @@ def status():
 
     if not username:
         return jsonify({'error': 'Authorization required'}), 401
-
-    # Получаем идентификатор сессии для пользователя из Redis
-    session_id = redis_client.get(f"user:{username}:session")
-
-    if not session_id:
-        return jsonify({'error': 'Invalid session'}), 401
 
     return jsonify({'message': f'Hello, {username}'})
 
@@ -184,11 +271,6 @@ def send_to_telegram(message):
 
     try:
         response = requests.post(url, json=payload)
-        # Логируем успешный ответ
-        if response.status_code == 200:
-            print(f"Message sent successfully: {response.json()}")
-        else:
-            print(f"Failed to send message: {response.status_code} - {response.text}")
         response.raise_for_status()  # Это также выбросит исключение в случае ошибки
     except requests.exceptions.RequestException as e:
         print(f"Error sending message: {e}")

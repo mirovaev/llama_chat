@@ -9,34 +9,36 @@
 </head>
 <body>
     <h1>Регистрация</h1>
-    <form id="register-form" action="/register-form" >
+    <form id="register-form" action="{{ url_for('register') }}" method="POST">
         <input type="text" id="register-username" placeholder="Логин" required>
         <input type="password" id="register-password" placeholder="Пароль" required>
         <button type="submit">Зарегистрироваться</button>
     </form>
-
     <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
 
     <script>
-        document.getElementById("register-form").addEventListener("submit", async function (event) {
-            event.preventDefault();
+        // Ждем полной загрузки DOM, чтобы скрипт работал
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("register-form").addEventListener("submit", async function (event) {
+                event.preventDefault(); // Отменяем стандартное поведение формы
 
-            const username = document.getElementById("register-username").value;
-            const password = document.getElementById("register-password").value;
+                const username = document.getElementById("register-username").value;
+                const password = document.getElementById("register-password").value;
 
-            const response = await fetch("/register_user", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
+                const response = await fetch("/register_user", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert("✅ Пользователь зарегистрирован!");
+                    window.location.href = "{{ url_for('login') }}"; // Перенаправление на страницу логина
+                } else {
+                    alert("❌ Ошибка: " + data.error);
+                }
             });
-
-            const data = await response.json();
-            if (response.ok) {
-                alert("✅ Пользователь зарегистрирован!");
-                window.location.href = "{{ url_for('login') }}"; // Перенаправление на страницу логина
-            } else {
-                alert("❌ Ошибка: " + data.error);
-            }
         });
     </script>
 </body>

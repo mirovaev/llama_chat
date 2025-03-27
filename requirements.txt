@@ -48,3 +48,5 @@ gunicorn
 redis
 flask-session
 python-dotenv
+psycopg2-binary
+Flask-SQLAlchemy
