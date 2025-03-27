@@ -14,6 +14,7 @@ from models import User
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from models import db
+
 # Загружаем переменные из .env
 load_dotenv()
 
@@ -24,18 +25,11 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 # Устанавливаем секретный ключ
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-fixed-secret-key")
-# Используем URL из переменных окружения, если он есть
-# DATABASE_URL = os.getenv("DATABASE_URL", "DATABASE_URL")
-#
-# # Настройки базы данных
-# app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# app.config['SESSION_TYPE'] = 'sqlalchemy'
-# Конфигурация базы данных в зависимости от окружения (локально или продакшн)
+
 if os.getenv("FLASK_ENV") == "production":
     # Используем PostgreSQL на Railway
-    DATABASE_URL_RAILWAY = os.getenv("DATABASE_URL_RAILWAY", "DATABASE_URL_RAILWAY")
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL_RAILWAY # Локальная база данных # Строка подключения из переменной окружения на Railway
+    DATABASE_URL_RAILWAY = os.getenv("DATABASE_URL_RAILWAY")
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL_RAILWAY # Строка подключения из переменной окружения на Railway
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)  # Инициализируем SQLAlchemy с приложением
     app.config['SESSION_TYPE'] = 'sqlalchemy'  # Настройка сессий для SQLAlchemy
@@ -49,14 +43,8 @@ else:
     app.config['SESSION_TYPE'] = 'sqlalchemy'  # Настройка сессий для SQLAlchemy
     app.config['SESSION_SQLALCHEMY'] = db  # Подключение сессий
 
-# Инициализируем db с приложением с помощью db.init_app(app)
-# db.init_app(app)
-
 # Подключаем миграции
 migrate = Migrate(app, db)
-
-# Настроим сессии с SQLAlchemy
-# app.config['SESSION_SQLALCHEMY'] = db
 Session(app)
 
 # Подключение к БД внутри контекста приложения
@@ -71,22 +59,11 @@ def test_db_connection():
             print(f"❌ Ошибка подключения к БД: {e}")
 
 test_db_connection()
-# # Настройки сессий с использованием Redis
-# app.config["SESSION_TYPE"] = "redis"
-# app.config["SESSION_PERMANENT"] = False
-# app.config["SESSION_USE_SIGNER"] = True
-# app.config["SESSION_KEY_PREFIX"] = "session:"
-# app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL"))
-# app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-
-
-# redis_client = redis.from_url(os.getenv("REDIS_URL"))
 API_KEY = os.getenv("API_KEY")
 URL = os.getenv("URL")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-
 
 def login_required(f):
     @wraps(f)
@@ -97,13 +74,11 @@ def login_required(f):
 
     return decorated_function
 
-
 @app.route("/login", methods=["GET"])
 def login_page():
     if "user" in session:
         return redirect(url_for("index"))  # Если уже авторизован, перенаправляем на главную страницу
     return render_template("login.html")  # Показываем страницу логина
-
 
 @app.route("/register", methods=["GET"])
 def register_page():
@@ -187,45 +162,6 @@ def login():
     except Exception as e:
         logger.error(f"Неизвестная ошибка: {str(e)}")
         return jsonify({"error": "Внутренняя ошибка сервера"}), 500
-
-# def login():
-#     if request.method == "GET":
-#         return redirect(url_for("login_page"))  # Перенаправление на форму логина
-#
-#     try:
-#         if not request.is_json:
-#             return jsonify({"error": "Ожидался JSON"}), 400
-#
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "Некорректный JSON"}), 400
-#
-#         username = data.get("username")
-#         password = data.get("password")
-#
-#         if not username or not password:
-#             return jsonify({"error": "Введите логин и пароль"}), 400
-#
-#         # Ищем пользователя в базе данных
-#         user = User.query.filter_by(username=username).first()
-#
-#         if not user or not check_password_hash(user.password_hash, password):
-#             return jsonify({"error": "Неверный логин или пароль"}), 401
-#
-#         session["user"] = username
-#         session.modified = True  # Принудительное сохранение сессии
-
-        # # Создаем сессию в базе данных (если её нет)
-        # existing_session = Session.query.filter_by(user_id=user.id).first()
-        # if existing_session:
-        #     existing_session.session_id = session.sid
-        #     existing_session.messages = session.get("messages", [])
-        # else:
-        #     new_session = Session(session_id=session.sid, user_id=user.id, messages=session.get("messages", []))
-        #     db.session.add(new_session)
-        #
-        # db.session.commit()
-
 
 @app.route("/logout", methods=["POST"])
 def logout():
@@ -321,9 +257,7 @@ def chat():
         "Content-Type": "application/json"
     }
     payload = {
-        # "model": "gemma2:27b",
-        "model": "qwen2.5: 14b",
-
+        "model": "gemma2:27b",
         "messages": session["messages"],
         "max_tokens": 200,
         "temperature": 0.7
@@ -337,10 +271,6 @@ def chat():
 
     reply = response.json()["choices"][0]["message"]["content"]
     session["messages"].append({"role": "assistant", "content": reply})
-
-    # # Если сгенерировала заказ или подтвердила его, отправляем уведомление в Telegram
-    # if "Новый заказ!" in reply or "Заказ подтвержден!" in reply:
-    #     send_to_telegram(reply)
 
     # Если заказ подтверждён, собираем данные и отправляем в Telegram
     if "Новый заказ!" in reply or "Заказ подтвержден!" in reply:
@@ -358,7 +288,6 @@ def extract_order_details(messages):
         "Адрес": None,
         "Записка": None
     }
-
 
     for msg in messages:
         text = msg["content"]
