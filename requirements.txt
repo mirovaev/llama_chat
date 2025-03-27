@@ -50,3 +50,4 @@ flask-session
 python-dotenv
 psycopg2-binary
 Flask-SQLAlchemy
+flask-migrate
